@@ -1,0 +1,434 @@
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
+const http = require('http');
+const net = require('net');
+const { Server } = require('socket.io'); // Import socket.io
+const { sequelize } = require('./src/models');
+const { DataTypes } = require('sequelize');
+const authRoutes = require('./src/routes/auth');
+const studentRoutes = require('./src/routes/student');
+const adminRoutes = require('./src/routes/admin');
+const carouselRoutes = require('./src/routes/carousel');
+const webhooksRoutes = require('./src/routes/webhooks');
+const { User, Plan } = require('./src/models');
+const bcrypt = require('bcryptjs');
+const chatSocket = require('./src/services/chatSocket'); // Import chat service
+const { processPendingSyncEvents } = require('./src/services/syncService');
+
+const app = express();
+const server = http.createServer(app); // Create HTTP server
+const PORT = process.env.PORT || 5000;
+const adminIndexPath = path.join(__dirname, '..', 'admin-app', 'web-build', 'index.html');
+const userIndexPath = path.join(__dirname, '..', 'user-app', 'web-build', 'index.html');
+
+// Initialize Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow all origins for now (adjust for prod)
+    methods: ["GET", "POST"]
+  }
+});
+
+app.set('io', io); // Expose io to routes
+
+// Initialize Chat Socket Service
+chatSocket(io);
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  fs.appendFileSync('crash.log', `[${new Date().toISOString()}] ${err.stack}\n`);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection:', reason);
+  fs.appendFileSync('crash.log', `[${new Date().toISOString()}] Unhandled Rejection: ${reason}\n`);
+});
+
+app.use(cors());
+app.use(express.json());
+
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/admin-web') && !req.path.startsWith('/auth') && !req.path.startsWith('/student') && !req.path.startsWith('/admin') && !req.path.startsWith('/api') && !req.path.startsWith('/carousel') && !req.path.startsWith('/webhooks') && !req.path.startsWith('/uploads')) {
+    console.log(`[web-user] ${req.method} ${req.originalUrl}`);
+  }
+  if (req.path.startsWith('/admin-web')) {
+    console.log(`[web-admin] ${req.method} ${req.originalUrl}`);
+  }
+  next();
+});
+
+// Serve uploaded files (logos, favicons)
+const uploadsDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDir));
+
+// Log 4xx/5xx responses to file for monitoring
+const API_LOG_PATH = path.join(__dirname, 'src', 'logs', 'api-errors.log');
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    try {
+      if (res.statusCode >= 400) {
+        const dir = path.dirname(API_LOG_PATH);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        const line = `[${new Date().toISOString()}] ${req.method} ${req.originalUrl} -> ${res.statusCode}\n`;
+        fs.appendFileSync(API_LOG_PATH, line, 'utf-8');
+      }
+    } catch {}
+  });
+  next();
+});
+// Routes
+app.use('/auth', authRoutes);
+app.use('/student', studentRoutes);
+app.use('/admin', adminRoutes);
+app.use('/api', adminRoutes); // Mount admin routes at /api to support /api/staff
+app.use('/carousel', carouselRoutes);
+app.use('/webhooks', webhooksRoutes);
+
+// Serve Head Admin Web App (static build) under port 5000
+try {
+  const adminWebBuild = path.join(__dirname, '..', 'admin-app', 'web-build');
+  app.use('/admin-web', express.static(adminWebBuild));
+  console.log('Admin web static mounted at /admin-web');
+} catch (e) {
+  console.warn('Failed to mount admin web static:', e.message);
+}
+
+// Serve Student Web App (static build) under root
+try {
+  const studentWebBuild = path.join(__dirname, '..', 'user-app', 'web-build');
+  app.use('/user', express.static(studentWebBuild));
+  app.use(express.static(studentWebBuild));
+  console.log('Student web static mounted at /');
+} catch (e) {
+  console.warn('Failed to mount student web static:', e.message);
+}
+
+// SPA Fallback Handling: Serve index.html for unknown routes
+// 1. Admin App Catch-All
+app.get('/admin-web/*', (req, res) => {
+  if (fs.existsSync(adminIndexPath)) {
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(adminIndexPath);
+  } else {
+    console.error(`Admin App build not found at: ${adminIndexPath}`);
+    res.status(404).send('Admin App build not found');
+  }
+});
+
+app.get('/user/*', (req, res) => {
+  if (fs.existsSync(userIndexPath)) {
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(userIndexPath);
+  } else {
+    res.status(404).send('User App build not found');
+  }
+});
+
+// 2. User App Catch-All (Must be last)
+app.get('*', (req, res, next) => {
+  if (req.path === '/health' || req.path === '/health/live' || req.path === '/health/ready') {
+    return next();
+  }
+  // Exclude API routes just in case (though Express order usually handles this)
+  if (req.path.startsWith('/api') || req.path.startsWith('/auth') || req.path.startsWith('/student') || req.path.startsWith('/admin')) {
+     return res.status(404).json({ error: 'API endpoint not found' });
+  }
+
+  if (fs.existsSync(userIndexPath)) {
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(userIndexPath);
+  } else {
+    res.status(404).send('User App build not found');
+  }
+});
+
+// Health Check
+app.get('/health', (req, res) => {
+  const adminBuildReady = fs.existsSync(adminIndexPath);
+  const userBuildReady = fs.existsSync(userIndexPath);
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    services: {
+      backend: 'up',
+      admin_web: adminBuildReady ? 'served' : 'missing_build',
+      student_web: userBuildReady ? 'served' : 'missing_build',
+      websocket: 'active'
+    },
+    web_builds: {
+      admin_web: adminBuildReady,
+      student_web: userBuildReady
+    }
+  });
+});
+
+app.get('/health/live', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/health/ready', async (req, res) => {
+  try {
+    await sequelize.authenticate();
+    const adminBuildReady = fs.existsSync(adminIndexPath);
+    const userBuildReady = fs.existsSync(userIndexPath);
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      dependencies: {
+        database: 'up',
+        admin_web: adminBuildReady ? 'served' : 'missing_build',
+        student_web: userBuildReady ? 'served' : 'missing_build'
+      }
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      dependencies: { database: 'down' },
+      error: error.message
+    });
+  }
+});
+
+// SPA Fallback Logic
+app.get('*', (req, res, next) => {
+  // Skip API routes
+  if (req.path.startsWith('/auth') || 
+      req.path.startsWith('/student') || 
+      req.path.startsWith('/admin') || 
+      req.path.startsWith('/carousel') || 
+      req.path.startsWith('/webhooks') || 
+      req.path.startsWith('/uploads')) {
+    return next();
+  }
+
+  // Determine if request is for Admin or Student App
+  // Logic: If Referer contains /admin-web, serve admin index.html
+  // Otherwise serve student index.html
+  // Ideally, we should use specific paths like /admin-dashboard for admin SPA
+  // But given current setup, let's try to infer or default to Student
+  
+  const referer = req.get('Referer') || '';
+  if (req.path.startsWith('/admin-web') || referer.includes('/admin-web')) {
+     if (fs.existsSync(adminIndexPath)) {
+         res.set('Cache-Control', 'no-store');
+         return res.sendFile(adminIndexPath);
+     }
+  }
+
+  if (fs.existsSync(userIndexPath)) {
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(userIndexPath);
+  } else {
+    next();
+  }
+});
+
+const checkPortAvailable = (port) => new Promise((resolve) => {
+  const tester = net.createServer();
+  tester.once('error', (err) => {
+    if (err && err.code === 'EADDRINUSE') {
+      resolve(false);
+      return;
+    }
+    resolve(false);
+  });
+  tester.once('listening', () => {
+    tester.close(() => resolve(true));
+  });
+  tester.listen(port, '0.0.0.0');
+});
+
+const ensureSeedAdmin = async () => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const shouldSeed = process.env.SEED_ADMIN !== 'false' && !isProduction;
+  if (!shouldSeed) return;
+
+  const phone = String(process.env.SEED_ADMIN_PHONE || '09000000000').replace(/[^0-9]/g, '');
+  const password = String(process.env.SEED_ADMIN_PASSWORD || 'admin123');
+  const name = String(process.env.SEED_ADMIN_NAME || 'Head Admin');
+  const forceReset = process.env.SEED_ADMIN_RESET === 'true';
+
+  if (!phone || !password) return;
+
+  let admin = await User.findOne({ where: { phone_number: phone } });
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  if (!admin) {
+    admin = await User.create({
+      full_name: name,
+      phone_number: phone,
+      password: hashedPassword,
+      role: 'admin',
+      status: 'active'
+    });
+    console.log(`Seed admin created: ${phone}`);
+    return;
+  }
+
+  if (forceReset) {
+    admin.password = hashedPassword;
+    admin.role = 'admin';
+    admin.status = 'active';
+    await admin.save();
+    console.log(`Seed admin reset: ${phone}`);
+  }
+};
+
+if (require.main === module) {
+  sequelize.sync().then(async () => {
+    try {
+      const table = await sequelize.getQueryInterface().describeTable('Users');
+      if (!table.avatar_url) {
+        await sequelize.getQueryInterface().addColumn('Users', 'avatar_url', {
+          type: DataTypes.STRING,
+          allowNull: true
+        });
+      }
+      if (!table.is_deleted) {
+        await sequelize.getQueryInterface().addColumn('Users', 'is_deleted', {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false
+        });
+      }
+      if (!table.deleted_at) {
+        await sequelize.getQueryInterface().addColumn('Users', 'deleted_at', {
+          type: DataTypes.DATE,
+          allowNull: true
+        });
+      }
+      if (!table.profile_fields) {
+        await sequelize.getQueryInterface().addColumn('Users', 'profile_fields', {
+          type: DataTypes.JSON,
+          allowNull: true
+        });
+      }
+      if (!table.email_verified) {
+        await sequelize.getQueryInterface().addColumn('Users', 'email_verified', {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false
+        });
+      }
+      if (!table.email_verified_at) {
+        await sequelize.getQueryInterface().addColumn('Users', 'email_verified_at', {
+          type: DataTypes.DATE,
+          allowNull: true
+        });
+      }
+      if (!table.email_verification_otp_hash) {
+        await sequelize.getQueryInterface().addColumn('Users', 'email_verification_otp_hash', {
+          type: DataTypes.STRING,
+          allowNull: true
+        });
+      }
+      if (!table.email_verification_expires_at) {
+        await sequelize.getQueryInterface().addColumn('Users', 'email_verification_expires_at', {
+          type: DataTypes.DATE,
+          allowNull: true
+        });
+      }
+      if (!table.email_verification_sent_at) {
+        await sequelize.getQueryInterface().addColumn('Users', 'email_verification_sent_at', {
+          type: DataTypes.DATE,
+          allowNull: true
+        });
+      }
+      if (!table.phone_verified) {
+        await sequelize.getQueryInterface().addColumn('Users', 'phone_verified', {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false
+        });
+      }
+      if (!table.phone_verified_at) {
+        await sequelize.getQueryInterface().addColumn('Users', 'phone_verified_at', {
+          type: DataTypes.DATE,
+          allowNull: true
+        });
+      }
+      if (!table.phone_verified_by) {
+        await sequelize.getQueryInterface().addColumn('Users', 'phone_verified_by', {
+          type: DataTypes.INTEGER,
+          allowNull: true
+        });
+      }
+      if (!table.phone_verification_otp_hash) {
+        await sequelize.getQueryInterface().addColumn('Users', 'phone_verification_otp_hash', {
+          type: DataTypes.STRING,
+          allowNull: true
+        });
+      }
+      if (!table.phone_verification_expires_at) {
+        await sequelize.getQueryInterface().addColumn('Users', 'phone_verification_expires_at', {
+          type: DataTypes.DATE,
+          allowNull: true
+        });
+      }
+      if (!table.phone_verification_sent_at) {
+        await sequelize.getQueryInterface().addColumn('Users', 'phone_verification_sent_at', {
+          type: DataTypes.DATE,
+          allowNull: true
+        });
+      }
+      if (!table.password_reset_otp_hash) {
+        await sequelize.getQueryInterface().addColumn('Users', 'password_reset_otp_hash', {
+          type: DataTypes.STRING,
+          allowNull: true
+        });
+      }
+      if (!table.password_reset_expires_at) {
+        await sequelize.getQueryInterface().addColumn('Users', 'password_reset_expires_at', {
+          type: DataTypes.DATE,
+          allowNull: true
+        });
+      }
+      if (!table.password_reset_requested_at) {
+        await sequelize.getQueryInterface().addColumn('Users', 'password_reset_requested_at', {
+          type: DataTypes.DATE,
+          allowNull: true
+        });
+      }
+      if (!table.token_version) {
+        await sequelize.getQueryInterface().addColumn('Users', 'token_version', {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+          defaultValue: 0
+        });
+      }
+      if (table.school && String(table.school.type || '').toLowerCase().includes('enum')) {
+        await sequelize.getQueryInterface().changeColumn('Users', 'school', {
+          type: DataTypes.STRING,
+          allowNull: true
+        });
+      }
+    } catch (err) {
+      console.error('Failed to ensure avatar_url column:', err.message);
+    }
+    ensureSeedAdmin().then(async () => {
+      setInterval(() => {
+        processPendingSyncEvents().catch((err) => {
+          console.error('Sync processor error:', err);
+        });
+      }, 5000);
+      const available = await checkPortAvailable(PORT);
+      if (!available) {
+        console.error(`Port ${PORT} is already in use.`);
+        process.exit(1);
+      }
+      server.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+      });
+    });
+  }).catch(err => {
+    console.error('Database connection failed:', err);
+  });
+}
+
+module.exports = app;

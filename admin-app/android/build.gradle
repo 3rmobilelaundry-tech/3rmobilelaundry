@@ -1,0 +1,257 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    ext {
+        buildToolsVersion = findProperty('android.buildToolsVersion') ?: '36.1.0'
+        minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '21')
+        compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '33')
+        targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '33')
+        kotlinVersion = findProperty('android.kotlinVersion') ?: '1.8.10'
+        frescoVersion = findProperty('expo.frescoVersion') ?: '2.5.0'
+
+    }
+    repositories {
+        google()
+        mavenCentral()
+        // Essential: Add the local node_modules path where the React Native Gradle Plugin lives
+        maven {
+            url new File(rootDir, "../node_modules/react-native/android")
+        }
+        // Fallback for newer React Native versions or monorepos
+        maven {
+            url new File(rootDir, "../node_modules/@react-native/gradle-plugin")
+        }
+    }
+    dependencies {
+        classpath('com.android.tools.build:gradle:8.3.2')
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+        classpath('com.facebook.react:react-native-gradle-plugin')
+    }
+}
+
+org.gradle.api.tasks.bundling.Jar.metaClass.setClassifier = { String value ->
+    delegate.archiveClassifier.set(value)
+}
+
+def originalMavenFrom = org.gradle.api.publish.maven.MavenPublication.metaClass.getMetaMethod(
+        "from",
+        [org.gradle.api.component.SoftwareComponent] as Class[]
+)
+org.gradle.api.publish.maven.MavenPublication.metaClass.from = { org.gradle.api.component.SoftwareComponent component ->
+    if (component != null) {
+        originalMavenFrom.invoke(delegate, component)
+    }
+}
+org.gradle.api.internal.component.DefaultSoftwareComponentContainer.metaClass.getRelease = { ->
+    delegate.findByName("release")
+}
+
+ext {
+    buildToolsVersion = findProperty('android.buildToolsVersion') ?: '36.1.0'
+    minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '21')
+    compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '33')
+    targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '33')
+    kotlinVersion = findProperty('android.kotlinVersion') ?: '1.8.10'
+    frescoVersion = findProperty('expo.frescoVersion') ?: '2.5.0'
+}
+
+subprojects { subproject ->
+    def configureAndroidDefaults = {
+        if (subproject.hasProperty("android")) {
+            def androidExt = subproject.android
+            def compileSdkValue = androidExt.compileSdkVersion
+            if (compileSdkValue == null || compileSdkValue == 0) {
+                androidExt.compileSdkVersion(rootProject.ext.compileSdkVersion)
+            }
+            if (androidExt.hasProperty("namespace")) {
+                def currentNamespace = androidExt.namespace
+                if (currentNamespace == null || currentNamespace.toString().trim().isEmpty()) {
+                    def manifestFile = subproject.file("src/main/AndroidManifest.xml")
+                    if (manifestFile.exists()) {
+                        def manifestText = manifestFile.getText("UTF-8")
+                        def matcher = manifestText =~ /package="([^"]+)"/
+                        if (matcher.find()) {
+                            androidExt.namespace = matcher.group(1)
+                        }
+                    }
+                }
+            }
+            if (androidExt.hasProperty("buildFeatures")) {
+                androidExt.buildFeatures.buildConfig = true
+            }
+        }
+    }
+    subproject.plugins.withId("com.android.library") {
+        configureAndroidDefaults.call()
+    }
+    subproject.plugins.withId("com.android.application") {
+        configureAndroidDefaults.call()
+    }
+}
+
+subprojects { subproject ->
+    subproject.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        def kotlinJvmTarget = "11"
+        if (subproject.hasProperty("android")) {
+            def androidExt = subproject.android
+            if (androidExt.hasProperty("compileOptions")
+                    && androidExt.compileOptions != null
+                    && androidExt.compileOptions.targetCompatibility != null) {
+                kotlinJvmTarget = androidExt.compileOptions.targetCompatibility.toString()
+            }
+        }
+        kotlinOptions {
+            jvmTarget = kotlinJvmTarget
+        }
+    }
+}
+
+subprojects { subproject ->
+    subproject.tasks.matching { task ->
+        task.name == "createReleaseExpoConfig" ||
+                task.name == "createDebugExpoConfig" ||
+                task.name == "createReleaseExpoManifest" ||
+                task.name == "createDebugExpoManifest"
+    }.configureEach {
+        doNotTrackState("unreadable inputs in this environment")
+    }
+}
+
+subprojects { subproject ->
+    if (subproject.name == "expo-constants") {
+        subproject.tasks.matching { task -> task.name == "createReleaseExpoConfig" }.configureEach {
+            dependsOn(
+                    ":app:createBundleReleaseJsAndAssets",
+                    ":app:checkReleaseDuplicateClasses",
+                    ":app:generateReleaseResValues",
+                    ":app:generateReleaseBuildConfig",
+                    ":app:checkReleaseAarMetadata",
+                    ":app:javaPreCompileRelease",
+                    ":app:mergeReleaseShaders",
+                    ":app:compileReleaseShaders",
+                    ":app:generateReleaseResources",
+                    ":app:mapReleaseSourceSetPaths"
+            )
+        }
+        subproject.tasks.matching { task -> task.name == "createDebugExpoConfig" }.configureEach {
+            dependsOn(
+                    ":app:createBundleDebugJsAndAssets",
+                    ":app:checkDebugDuplicateClasses",
+                    ":app:generateDebugResValues",
+                    ":app:generateDebugBuildConfig",
+                    ":app:checkDebugAarMetadata",
+                    ":app:javaPreCompileDebug",
+                    ":app:mergeDebugShaders",
+                    ":app:compileDebugShaders",
+                    ":app:generateDebugResources",
+                    ":app:mapDebugSourceSetPaths"
+            )
+        }
+        subproject.tasks.matching { task -> task.name == "generateReleaseLintModel" }.configureEach {
+            dependsOn(":expo-constants:copyReleaseExpoConfig")
+        }
+        subproject.tasks.matching { task -> task.name == "generateReleaseLintVitalModel" }.configureEach {
+            dependsOn(":expo-constants:copyReleaseExpoConfig")
+        }
+        subproject.tasks.matching { task -> task.name == "generateDebugLintModel" }.configureEach {
+            dependsOn(":expo-constants:copyDebugExpoConfig")
+        }
+        subproject.tasks.matching { task -> task.name == "lintVitalAnalyzeRelease" }.configureEach {
+            dependsOn(":expo-constants:copyReleaseExpoConfig")
+        }
+        subproject.tasks.matching { task -> task.name == "lintAnalyzeRelease" }.configureEach {
+            dependsOn(":expo-constants:copyReleaseExpoConfig")
+        }
+    }
+    if (subproject.name == "expo-updates") {
+        subproject.tasks.matching { task -> task.name == "createReleaseExpoManifest" }.configureEach {
+            dependsOn(
+                    ":app:createBundleReleaseJsAndAssets",
+                    ":app:mergeReleaseAssets",
+                    ":app:generateReleaseResValues",
+                    ":app:generateReleaseBuildConfig",
+                    ":app:checkReleaseAarMetadata",
+                    ":app:javaPreCompileRelease",
+                    ":app:mergeReleaseShaders",
+                    ":app:compileReleaseShaders",
+                    ":app:generateReleaseResources",
+                    ":app:mapReleaseSourceSetPaths"
+            )
+        }
+        subproject.tasks.matching { task -> task.name == "createDebugExpoManifest" }.configureEach {
+            dependsOn(
+                    ":app:createBundleDebugJsAndAssets",
+                    ":app:mergeDebugAssets",
+                    ":app:generateDebugResValues",
+                    ":app:generateDebugBuildConfig",
+                    ":app:checkDebugAarMetadata",
+                    ":app:javaPreCompileDebug",
+                    ":app:mergeDebugShaders",
+                    ":app:compileDebugShaders",
+                    ":app:generateDebugResources",
+                    ":app:mapDebugSourceSetPaths"
+            )
+        }
+    }
+    if (subproject.name == "app") {
+        subproject.tasks.matching { task -> task.name == "parseReleaseLocalResources" }.configureEach {
+            dependsOn(":expo-updates:copyReleaseExpoManifest")
+        }
+        subproject.tasks.matching { task -> task.name == "parseDebugLocalResources" }.configureEach {
+            dependsOn(":expo-updates:copyDebugExpoManifest")
+        }
+        subproject.tasks.matching { task -> task.name == "processReleaseMainManifest" }.configureEach {
+            dependsOn(":expo-updates:copyReleaseExpoManifest")
+        }
+        subproject.tasks.matching { task -> task.name == "processDebugMainManifest" }.configureEach {
+            dependsOn(":expo-updates:copyDebugExpoManifest")
+        }
+        subproject.tasks.matching { task -> task.name == "mergeExtDexRelease" }.configureEach {
+            dependsOn(":expo-updates:copyReleaseExpoManifest")
+        }
+        subproject.tasks.matching { task -> task.name == "mergeExtDexDebug" }.configureEach {
+            dependsOn(":expo-updates:copyDebugExpoManifest")
+        }
+        subproject.tasks.matching { task -> task.name == "mergeReleaseNativeLibs" }.configureEach {
+            dependsOn(":expo-updates:copyReleaseExpoManifest")
+        }
+        subproject.tasks.matching { task -> task.name == "mergeDebugNativeLibs" }.configureEach {
+            dependsOn(":expo-updates:copyDebugExpoManifest")
+        }
+        subproject.tasks.matching { task -> task.name == "configureReleaseDependencies" }.configureEach {
+            dependsOn(":expo-updates:copyReleaseExpoManifest")
+        }
+        subproject.tasks.matching { task -> task.name == "configureDebugDependencies" }.configureEach {
+            dependsOn(":expo-updates:copyDebugExpoManifest")
+        }
+        subproject.tasks.matching { task -> task.name == "sdkReleaseDependencyData" }.configureEach {
+            dependsOn(":expo-updates:copyReleaseExpoManifest")
+        }
+        subproject.tasks.matching { task -> task.name == "sdkDebugDependencyData" }.configureEach {
+            dependsOn(":expo-updates:copyDebugExpoManifest")
+        }
+        subproject.tasks.matching { task -> task.name == "mergeReleaseJavaResource" }.configureEach {
+            dependsOn(":expo-updates:copyReleaseExpoManifest")
+        }
+        subproject.tasks.matching { task -> task.name == "mergeDebugJavaResource" }.configureEach {
+            dependsOn(":expo-updates:copyDebugExpoManifest")
+        }
+    }
+}
+
+allprojects {
+    repositories {
+        maven {
+            // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
+            url(new File(rootDir, "../node_modules/react-native/android"))
+        }
+        maven {
+            // Android JSC is installed from npm
+            url(new File(rootDir, "../node_modules/jsc-android/dist"))
+        }
+
+        google()
+        mavenCentral()
+        maven { url 'https://www.jitpack.io' }
+    }
+}
