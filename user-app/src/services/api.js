@@ -7,13 +7,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // For Web, localhost is perfect
 let BASE_URL = 'http://10.69.192.33:5000';
 
-if (Platform.OS === 'web') {
-  if (process.env.NODE_ENV === 'production') {
-    BASE_URL = '';
-  } else {
-    // Development web fallback
-    BASE_URL = 'http://localhost:5000';
-  }
+let BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  'https://3rmobilelaundry-production.up.railway.app';
+
+if (__DEV__) {
+  BASE_URL = 'http://10.69.192.33:5000';
 }
 
 export const API_URL = BASE_URL;
