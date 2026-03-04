@@ -1,6 +1,5 @@
 {
   "name": "3r-laundry-user",
-  "homepage": "/user",
   "version": "1.0.0",
   "scripts": {
     "start": "expo start --dev-client",
