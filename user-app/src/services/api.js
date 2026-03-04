@@ -2,19 +2,15 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Use 10.0.2.2 for Android Emulator, localhost for iOS simulator
-// For physical device, use your machine's IP address (e.g., 192.168.1.x)
-// For Web, localhost is perfect
-let BASE_URL = 'http://10.69.192.33:5000';
-
+// Production (Railway) OR environment variable
 let BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   'https://3rmobilelaundry-production.up.railway.app';
 
+// Development override
 if (__DEV__) {
   BASE_URL = 'http://10.69.192.33:5000';
 }
-
 export const API_URL = BASE_URL;
 
 if (typeof console !== 'undefined') {
