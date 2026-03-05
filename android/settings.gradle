@@ -1,0 +1,75 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+        maven {
+            url("$settingsDir/../node_modules/react-native/android")
+        }
+        maven {
+            url("$settingsDir/../node_modules/@react-native/gradle-plugin")
+        }
+    }
+}
+
+rootProject.name = '3R Laundry User'
+
+def getExpoAutolinkingPath() {
+    try {
+        def proc = ["node", "--print", "require.resolve('expo/package.json')"].execute(null, settingsDir)
+        def path = proc.text.trim()
+        if (proc.exitValue() == 0 && path) {
+            return new File(path, "../scripts/autolinking.gradle")
+        }
+    } catch (Exception e) {}
+    return new File(settingsDir, "../node_modules/expo/scripts/autolinking.gradle")
+}
+
+def expoAutolinking = getExpoAutolinkingPath()
+if (expoAutolinking.exists()) {
+    apply from: expoAutolinking
+    useExpoModules()
+}
+
+def getNativeModulesPath() {
+    try {
+        def proc = ["node", "--print", "require.resolve('@react-native-community/cli-platform-android/package.json')"].execute(null, settingsDir)
+        def path = proc.text.trim()
+        if (proc.exitValue() == 0 && path) {
+            return new File(path, "../native_modules.gradle")
+        }
+    } catch (Exception e) {}
+    return new File(settingsDir, "../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
+}
+
+def nativeModulesGradle = getNativeModulesPath()
+if (nativeModulesGradle.exists()) {
+    apply from: nativeModulesGradle
+    applyNativeModulesSettingsGradle(settings)
+}
+
+include ':app'
+
+// Search for the React Native Gradle Plugin and include it
+def getReactNativeGradlePluginPath() {
+    try {
+        def proc = ["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json')"].execute(null, settingsDir)
+        def path = proc.text.trim()
+        if (proc.exitValue() == 0 && path) {
+            return new File(path).getParentFile()
+        }
+    } catch (Exception e) {}
+    try {
+        def proc = ["node", "--print", "require.resolve('react-native-gradle-plugin/package.json')"].execute(null, settingsDir)
+        def path = proc.text.trim()
+        if (proc.exitValue() == 0 && path) {
+            return new File(path).getParentFile()
+        }
+    } catch (Exception e) {}
+    return new File(settingsDir, "../node_modules/@react-native/gradle-plugin")
+}
+
+def rnGradlePluginPath = getReactNativeGradlePluginPath()
+if (rnGradlePluginPath.exists()) {
+    includeBuild(rnGradlePluginPath)
+}
