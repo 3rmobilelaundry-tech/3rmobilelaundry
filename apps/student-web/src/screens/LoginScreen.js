@@ -273,9 +273,6 @@ export default function LoginScreen({ navigation, route }) {
                 <TouchableOpacity style={styles.primaryBtn} onPress={() => handleLogin()} disabled={loading} accessibilityRole="button">
                   {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Login</Text>}
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.ghostBtn} onPress={() => handleLogin('08000000001', '123456')} accessibilityRole="button">
-                  <Text style={styles.ghostBtnText}>Use Demo Login</Text>
-                </TouchableOpacity>
                 <View style={styles.bottomRow}>
                   <Text style={styles.bottomText}>New here?</Text>
                   <TouchableOpacity onPress={() => navigation.navigate('SignUp')} accessibilityRole="link">
