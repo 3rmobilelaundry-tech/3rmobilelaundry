@@ -2,14 +2,31 @@ import { config, auth, admin } from './api.js';
 config.setBaseUrl('http://localhost:5100');
 const e = React.createElement;
 function App() {
-  const [screen, setScreen] = React.useState('login');
+  const [screen, setScreen] = React.useState('staffLogin');
+  const [loginType, setLoginType] = React.useState('staff');
   const [user, setUser] = React.useState(null);
   const [plans, setPlans] = React.useState([]);
   const [form, setForm] = React.useState({ name: '', price: '', duration_days: '', max_pickups: '', description: '' });
+  const [staffForm, setStaffForm] = React.useState({ phone: '', password: '' });
   const [metrics, setMetrics] = React.useState({ todayOrders: 0, awaiting: 0, processing: 0, ready: 0, delivered: 0 });
-  const login = async () => {
-    const res = await auth.login({ phone_number: '09000000000', password: 'admin' }).catch(() => null);
-    if (res) { setUser(res.user); setScreen('dashboard'); loadPlans(); }
+  const [loading, setLoading] = React.useState(false);
+  const staffLogin = async () => {
+    setLoading(true);
+    try {
+      const res = await auth.login({ phone_number: staffForm.phone, password: staffForm.password }).catch(() => null);
+      if (res) { setUser(res.user); setScreen('dashboard'); loadPlans(); }
+    } finally {
+      setLoading(false);
+    }
+  };
+  const adminLogin = async () => {
+    setLoading(true);
+    try {
+      const res = await auth.login({ phone_number: '09000000000', password: 'admin' }).catch(() => null);
+      if (res) { setUser(res.user); setScreen('dashboard'); loadPlans(); }
+    } finally {
+      setLoading(false);
+    }
   };
   const loadPlans = async () => { const list = await admin.listPlans().catch(() => []); setPlans(list); };
   const submitPlan = async () => {
@@ -18,11 +35,29 @@ function App() {
     setForm({ name: '', price: '', duration_days: '', max_pickups: '', description: '' });
     loadPlans();
   };
+  if (screen === 'staffLogin') {
+    return e('div', { className: 'container' },
+      e('div', { className: 'card' },
+        e('h2', null, 'Staff Login'),
+        e('div', { className: 'row' },
+          e('input', { placeholder: 'Phone Number', value: staffForm.phone, onChange: (ev) => setStaffForm({ ...staffForm, phone: ev.target.value }) })
+        ),
+        e('div', { className: 'row' },
+          e('input', { placeholder: 'Password', type: 'password', value: staffForm.password, onChange: (ev) => setStaffForm({ ...staffForm, password: ev.target.value }) })
+        ),
+        e('div', { style: { marginTop: 12 } }, 
+          e('button', { className: 'btn', onClick: staffLogin, disabled: loading, style: { opacity: loading ? 0.6 : 1 } }, loading ? 'Logging in...' : 'Login'),
+          e('button', { className: 'btn', onClick: () => { setLoginType('admin'); setScreen('login'); }, style: { marginLeft: 8, backgroundColor: '#666' } }, 'Admin Login')
+        )
+      )
+    );
+  }
   if (screen === 'login') {
     return e('div', { className: 'container' },
       e('div', { className: 'card' },
         e('h2', null, 'Head Admin Login'),
-        e('button', { className: 'btn', onClick: login }, 'Login Demo Admin')
+        e('button', { className: 'btn', onClick: adminLogin, disabled: loading, style: { opacity: loading ? 0.6 : 1 } }, loading ? 'Logging in...' : 'Login Demo Admin'),
+        e('button', { className: 'btn', onClick: () => { setStaffForm({ phone: '', password: '' }); setScreen('staffLogin'); }, style: { marginLeft: 8, backgroundColor: '#666' } }, 'Back to Staff Login')
       )
     );
   }
