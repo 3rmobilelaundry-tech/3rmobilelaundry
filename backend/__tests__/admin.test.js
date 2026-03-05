@@ -65,7 +65,7 @@ describe('Admin API', () => {
   });
 
   test('create carousel item and verify active rotation list', async () => {
-    const imagePath = path.resolve(__dirname, '..', '..', 'admin-app', 'assets', 'logo.png');
+    const imagePath = path.resolve(__dirname, '..', '..', 'apps', 'student-web', 'assets', 'icon.png');
     const title = `Carousel Test ${Date.now()}`;
     const create = await request(app)
       .post('/carousel')
