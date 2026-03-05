@@ -30,7 +30,7 @@ module.exports = async function (env, argv) {
     console.log('Plugins:', config.plugins.map(p => p.constructor.name));
   }
 
-  config.output.publicPath = '/user/';
+  config.output.publicPath = '/';
 
   return config;
 };

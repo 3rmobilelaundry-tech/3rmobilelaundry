@@ -1,4 +1,9 @@
 {
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "web-build",
+  "env": {
+    "NODE_ENV": "production"
+  },
   "rewrites": [
     {
       "source": "/((?!static|.*\\..*).*)",

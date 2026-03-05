@@ -1,0 +1,16 @@
+node_modules
+npm-debug.log
+.gitignore
+.git
+.DS_Store
+android/
+ios/
+.expo/
+dist/
+*.log
+.env
+.env.local
+.env.*.local
+__tests__/
+src/**/*.test.js
+src/**/*.test.jsx
