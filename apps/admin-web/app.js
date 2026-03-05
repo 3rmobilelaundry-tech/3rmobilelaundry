@@ -1,4 +1,4 @@
-import { config, auth, admin } from '../shared/api.js';
+import { config, auth, admin } from './api.js';
 config.setBaseUrl('http://localhost:5100');
 const e = React.createElement;
 function App() {

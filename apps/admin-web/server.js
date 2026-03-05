@@ -7,6 +7,7 @@ const mime = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
+  '.ico': 'image/x-icon',
 };
 const server = http.createServer((req, res) => {
   const urlPath = req.url === '/' ? '/index.html' : req.url;
