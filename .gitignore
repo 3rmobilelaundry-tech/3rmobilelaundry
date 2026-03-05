@@ -2,7 +2,7 @@ node_modules/
 .expo/
 dist/
 .env
-# web-build/
+web-build/
 *.apk
 *.aab
 .DS_Store
