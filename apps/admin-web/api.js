@@ -1,4 +1,4 @@
-let BASE_URL = process.env.BASE_URL || 'http://localhost:5100';
+let BASE_URL = (typeof process !== 'undefined' && process.env?.BASE_URL) || 'http://localhost:5100';
 let AUTH_TOKEN = '';
 const setBaseUrl = (u) => { BASE_URL = u; };
 const setAuthToken = (t) => { AUTH_TOKEN = t || ''; };
