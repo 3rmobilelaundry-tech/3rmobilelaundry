@@ -11,6 +11,12 @@ module.exports = async function (env, argv) {
     ...config.resolve.fallback,
     crypto: false,
   };
+
+  // alias missing icon module to expo vector icons to satisfy dynamic require
+  config.resolve.alias = {
+    ...config.resolve.alias,
+    '@react-native-vector-icons/material-design-icons': require.resolve('@expo/vector-icons/MaterialCommunityIcons'),
+  };
   
   return config;
 };
