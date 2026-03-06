@@ -1,7 +1,7 @@
 {
   "name": "3r-laundry-admin",
   "version": "1.0.0",
-  "homepage": "/admin",
+  "homepage": ".",
   "scripts": {
     "start": "expo start --dev-client",
     "android": "expo run:android",
@@ -9,6 +9,7 @@
     "web": "expo start --web",
     "dev:multi-web": "node ../dev-multi-web.js",
     "build:web": "npx expo export:web",
+    "postbuild:web": "node scripts/patchWebBuild.js",
     "build:apk": "set EAS_NO_VCS=1 && eas build -p android --profile preview",
     "eas-build-pre-install": "npm config set legacy-peer-deps true && npm install -g expo-cli",
     "test": "jest",

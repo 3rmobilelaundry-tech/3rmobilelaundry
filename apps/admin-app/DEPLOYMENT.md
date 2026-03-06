@@ -13,6 +13,9 @@ You have successfully deployed the admin app to Vercel. However, for the app to 
 
 ## ⚠️ Critical Configuration Needed
 
+> 🔧 *New build behavior*: static assets are now patched after export to remove the `/admin` prefix. This means the app can be deployed at the root of a domain without additional configuration. The build step automatically runs a small script (`postbuild:web`) that fixes URLs. You no longer need to modify the `homepage` field manually.
+
+
 The admin dashboard requires a backend API server to function. Currently, it cannot add staff or load any data because the API connection is not configured.
 
 ### Option 1: Set Backend API URL (Recommended)
@@ -36,9 +39,11 @@ For local development:
 ## What This Means For Your Deployment
 
 When you deployed to Vercel:
-- ✅ Static assets (HTML, JS, CSS) are served correctly
+- ✅ Static assets (HTML, JS, CSS) are served correctly (prefixes automatically patched)
 - ✅ Login page works with dev credentials (09000000000 / admin123)
-- ❌ All API calls fail (404) because the backend server isn't running on Vercel
+- ❌ All API calls fail (404) because the backend server isn't running on Vercel **unless you set `EXPO_PUBLIC_API_URL` to point at it**
+
+> 💡 The app will fall back to a known production backend at `https://3rmobilelaundry-production.up.railway.app` if you forget to set the environment variable, but you should still configure it explicitly for flexibility.
 
 ## Testing Today
 

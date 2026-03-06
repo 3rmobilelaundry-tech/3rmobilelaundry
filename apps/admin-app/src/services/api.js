@@ -6,17 +6,21 @@ const BASE_URL_NATIVE = 'http://10.69.192.33:5000';
 const ENV_WEB_URL = process.env.EXPO_PUBLIC_API_URL || process.env.REACT_APP_API_URL || process.env.API_URL;
 let BASE_URL_WEB = ENV_WEB_URL || 'http://localhost:5000';
 
+// When no env var provided in production we fall back to the known Railway backend
+const PROD_BACKEND = 'https://3rmobilelaundry-production.up.railway.app';
+
 if (Platform.OS === 'web') {
   if (process.env.NODE_ENV === 'production') {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     if (ENV_WEB_URL) {
       BASE_URL_WEB = ENV_WEB_URL;
     } else if (origin && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
-      // IMPORTANT: When deployed to production (e.g., Vercel), you MUST set the EXPO_PUBLIC_API_URL environment variable
-      // pointing to your actual backend API server. Otherwise, the app will try to call APIs on the deployment URL.
-      // Example: EXPO_PUBLIC_API_URL=https://your-api-server.com
-      BASE_URL_WEB = origin;
-      console.warn('[AdminApp API Config] WARNING: No EXPO_PUBLIC_API_URL set in production. Using current origin:', origin);
+      // When deployed but no EXPO_PUBLIC_API_URL is set, use the known production backend
+      BASE_URL_WEB = PROD_BACKEND;
+      console.warn(
+        '[AdminApp API Config] WARNING: No EXPO_PUBLIC_API_URL set in production. Using default backend URL:',
+        BASE_URL_WEB
+      );
       console.warn('[AdminApp API Config] Set EXPO_PUBLIC_API_URL environment variable to your actual backend API URL');
     } else {
       BASE_URL_WEB = 'http://localhost:5000';
