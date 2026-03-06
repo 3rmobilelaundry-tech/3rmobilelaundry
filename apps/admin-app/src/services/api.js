@@ -177,6 +177,45 @@ export const loadAuthSession = async () => {
   return { token, user };
 };
 
+/**
+ * DEVELOPMENT ONLY: Helper function for default admin login during development/testing
+ * Default credentials:
+ * - Phone: 09000000000
+ * - Password: admin123
+ * - Role: head_admin (admin)
+ * 
+ * This is a fallback for testing without a backend API.
+ * Remove or disable this in production.
+ */
+export const tryDevDefaultLogin = (phone_number, password) => {
+  const DEFAULT_DEV_PHONE = '09000000000';
+  const DEFAULT_DEV_PASSWORD = 'admin123';
+  
+  // Check if this is the default development credential
+  if (phone_number === DEFAULT_DEV_PHONE && password === DEFAULT_DEV_PASSWORD) {
+    console.log('DEBUG: Using development default admin account');
+    
+    // Return a mock successful response matching the API response structure
+    return Promise.resolve({
+      data: {
+        token: 'dev-admin-token-' + Date.now(),
+        user: {
+          id: '999999',
+          phone_number: DEFAULT_DEV_PHONE,
+          name: 'Dev Admin',
+          role: 'admin', // Note: server uses 'admin', UI shows as Head Admin
+          email: 'dev@admin.local',
+          created_at: new Date().toISOString(),
+          is_dev_account: true, // Flag to indicate this is dev account
+        }
+      }
+    });
+  }
+  
+  // Otherwise, proceed with actual API login
+  return api.post('/auth/login', { phone_number, password });
+};
+
 export const auth = {
   login: (phone_number, password) => api.post('/auth/login', { phone_number, password }),
   logout: () => api.post('/auth/logout')

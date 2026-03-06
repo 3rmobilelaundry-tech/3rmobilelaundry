@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { auth, setAuthToken, normalizeApiError, saveAuthSession, loadAuthSession } from '../services/api';
+import { auth, setAuthToken, normalizeApiError, saveAuthSession, loadAuthSession, tryDevDefaultLogin } from '../services/api';
 
 export default function LoginScreen({ navigation }) {
   const [phone, setPhone] = useState('');
@@ -60,7 +60,8 @@ export default function LoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-      const response = await auth.login(phone, password);
+      // Try development default login first, then fall back to API
+      const response = await tryDevDefaultLogin(phone, password);
       const { token, user } = response.data;
       
       if (user.role === 'student') {
@@ -104,6 +105,11 @@ export default function LoginScreen({ navigation }) {
       ) : (
         <Button title="Login" onPress={handleLogin} />
       )}
+      
+      {/* DEVELOPMENT ONLY: Default test credentials */}
+      <Text style={{textAlign: 'center', color: '#666', marginTop: 20, fontSize: 11}}>
+        Dev Test Account - Phone: 09000000000 | Password: admin123
+      </Text>
     </View>
   );
 }
