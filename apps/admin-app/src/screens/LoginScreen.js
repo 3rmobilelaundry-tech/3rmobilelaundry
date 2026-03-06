@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView, Dimensions } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { auth, setAuthToken, normalizeApiError, saveAuthSession, loadAuthSession, tryDevDefaultLogin } from '../services/api';
+
+const { width } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation }) {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -12,23 +16,17 @@ export default function LoginScreen({ navigation }) {
   }, []);
 
   const routeByRole = (user) => {
-    if (user.role === 'admin') {
+    if (user.role === 'head_admin') {
       navigation.replace('HeadAdmin', { user, initialTab: 'Overview' });
-      return;
-    }
-    if (user.role === 'receptionist') {
+    } else if (user.role === 'receptionist') {
       navigation.replace('ReceptionistScreen', { user });
-      return;
-    }
-    if (user.role === 'washer') {
+    } else if (user.role === 'washer') {
       navigation.replace('WasherScreen', { user });
-      return;
-    }
-    if (user.role === 'rider') {
+    } else if (user.role === 'rider') {
       navigation.replace('RiderScreen', { user });
-      return;
+    } else {
+      navigation.replace('Dashboard', { user });
     }
-    navigation.replace('Dashboard', { user });
   };
 
   useEffect(() => {
@@ -63,9 +61,9 @@ export default function LoginScreen({ navigation }) {
       // Try development default login first, then fall back to API
       const response = await tryDevDefaultLogin(phone, password);
       const { token, user } = response.data;
-      
+
       if (user.role === 'student') {
-        Alert.alert('Error', 'Students cannot access Staff App');
+        Alert.alert('Error', 'Students cannot access Admin App');
         return;
       }
 
@@ -81,58 +79,120 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Staff Login</Text>
-      <Text style={{textAlign: 'center', color: '#999', marginBottom: 10}}>v2.0 (Fixes Loaded)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Phone Number"
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      
-      {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : (
-        <Button title="Login" onPress={handleLogin} />
-      )}
-      
-      {/* DEVELOPMENT ONLY: Default test credentials */}
-      <Text style={{textAlign: 'center', color: '#666', marginTop: 20, fontSize: 11}}>
-        Dev Test Account - Phone: 09000000000 | Password: admin123
-      </Text>
-    </View>
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.card}>
+        <Text style={styles.title}>Login</Text>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Phone Number"
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+          autoCapitalize="none"
+        />
+
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+          />
+          <TouchableOpacity
+            style={styles.eyeIcon}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={24} color="#666" />
+          </TouchableOpacity>
+        </View>
+
+        {loading ? (
+          <ActivityIndicator size="large" color="#007bff" />
+        ) : (
+          <TouchableOpacity style={styles.button} onPress={handleLogin}>
+            <Text style={styles.buttonText}>Login</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+          <Text style={styles.link}>Don't have an account? Sign Up</Text>
+        </TouchableOpacity>
+
+        {/* DEVELOPMENT ONLY: Default test credentials */}
+        <Text style={styles.devNote}>
+          Dev Test Account - Phone: 09000000000 | Password: admin123
+        </Text>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
     padding: 20,
-    backgroundColor: '#eee',
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 30,
+    width: Math.min(width * 0.9, 400),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: '#333',
     marginBottom: 20,
     textAlign: 'center',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#999',
-    padding: 10,
-    marginBottom: 10,
+    borderColor: '#ddd',
     borderRadius: 5,
-    backgroundColor: '#fff',
+    padding: 15,
+    marginVertical: 10,
+    fontSize: 16,
+  },
+  passwordContainer: {
+    position: 'relative',
+    marginVertical: 10,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
+    top: 15,
+  },
+  button: {
+    backgroundColor: '#007bff',
+    paddingVertical: 15,
+    borderRadius: 5,
+    marginVertical: 20,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  link: {
+    color: '#007bff',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  devNote: {
+    textAlign: 'center',
+    color: '#666',
+    marginTop: 20,
+    fontSize: 11,
   },
 });

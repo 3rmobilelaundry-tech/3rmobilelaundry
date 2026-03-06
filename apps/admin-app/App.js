@@ -4,7 +4,9 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import * as SplashScreen from 'expo-splash-screen';
+import WelcomeScreen from './src/screens/WelcomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import SignupScreen from './src/screens/SignupScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import ScanCodeScreen from './src/screens/ScanCodeScreen';
 import HeadAdminScreen from './src/screens/HeadAdminScreen';
@@ -111,8 +113,10 @@ export default function App() {
           }
         >
           <SyncProvider>
-            <Stack.Navigator initialRouteName="Login">
+            <Stack.Navigator initialRouteName="Welcome">
+              <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
               <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
               <Stack.Screen name="Dashboard" component={DashboardScreen} />
               <Stack.Screen name="HeadAdmin" component={HeadAdminScreen} options={{ title: 'Admin App' }} />
               <Stack.Screen name="ReceptionistScreen" component={ReceptionistScreen} options={{ headerShown: false }} />

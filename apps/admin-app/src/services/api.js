@@ -232,6 +232,7 @@ export const tryDevDefaultLogin = (phone_number, password) => {
 
 export const auth = {
   login: (phone_number, password) => api.post('/auth/login', { phone_number, password }),
+  register: (userData) => api.post('/auth/register', userData),
   logout: () => api.post('/auth/logout')
 };
 

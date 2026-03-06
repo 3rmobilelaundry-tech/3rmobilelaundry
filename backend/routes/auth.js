@@ -33,13 +33,13 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Signup route for creating head admin
-router.post('/signup', async (req, res) => {
+// Register route (alias for signup)
+router.post('/register', async (req, res) => {
   try {
-    const { phone_number, password, name, role } = req.body;
+    const { phone_number, password, full_name, role, email } = req.body;
 
     // Validate required fields
-    if (!phone_number || !password || !name || !role) {
+    if (!phone_number || !password || !full_name || !role) {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
@@ -56,23 +56,32 @@ router.post('/signup', async (req, res) => {
     const newUser = await User.create({
       phone: phone_number,
       password: hashedPassword,
-      name,
+      name: full_name,
       role,
+      email,
     });
 
-    // Return success (don't return the password)
+    // Generate token for immediate login
+    const token = jwt.sign(
+      { id: newUser._id, role: newUser.role },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
+
+    // Return success with token and user
     res.status(201).json({
-      message: 'User created successfully',
+      token,
       user: {
         id: newUser._id,
         phone: newUser.phone,
         name: newUser.name,
         role: newUser.role,
+        email: newUser.email,
       }
     });
 
   } catch (error) {
-    console.error('Signup error:', error);
+    console.error('Register error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

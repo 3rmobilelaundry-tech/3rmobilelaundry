@@ -14,8 +14,16 @@ const server = http.createServer((req, res) => {
   const filePath = path.join(root, urlPath);
   fs.readFile(filePath, (err, data) => {
     if (err) {
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('Not found');
+      // fallback to index.html for client-side routing
+      fs.readFile(path.join(root, 'index.html'), (err2, data2) => {
+        if (err2) {
+          res.writeHead(404, { 'Content-Type': 'text/plain' });
+          res.end('Not found');
+        } else {
+          res.writeHead(200, { 'Content-Type': mime['.html'] });
+          res.end(data2);
+        }
+      });
     } else {
       const ext = path.extname(filePath);
       res.writeHead(200, { 'Content-Type': mime[ext] || 'application/octet-stream' });
