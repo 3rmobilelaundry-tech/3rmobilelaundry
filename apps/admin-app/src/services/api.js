@@ -12,7 +12,12 @@ if (Platform.OS === 'web') {
     if (ENV_WEB_URL) {
       BASE_URL_WEB = ENV_WEB_URL;
     } else if (origin && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+      // IMPORTANT: When deployed to production (e.g., Vercel), you MUST set the EXPO_PUBLIC_API_URL environment variable
+      // pointing to your actual backend API server. Otherwise, the app will try to call APIs on the deployment URL.
+      // Example: EXPO_PUBLIC_API_URL=https://your-api-server.com
       BASE_URL_WEB = origin;
+      console.warn('[AdminApp API Config] WARNING: No EXPO_PUBLIC_API_URL set in production. Using current origin:', origin);
+      console.warn('[AdminApp API Config] Set EXPO_PUBLIC_API_URL environment variable to your actual backend API URL');
     } else {
       BASE_URL_WEB = 'http://localhost:5000';
     }
@@ -33,7 +38,12 @@ export const normalizeApiError = (error) => {
   const data = error?.response?.data;
   const isTimeout = error?.code === 'ECONNABORTED';
   const isNetworkError = !error?.response && !!error?.request;
-  const messageFromServer = data?.error || data?.message;
+  
+  // Safely extract message and ensure it's a string
+  let messageFromServer = data?.error || data?.message;
+  if (typeof messageFromServer !== 'string') {
+    messageFromServer = typeof messageFromServer === 'object' ? JSON.stringify(messageFromServer) : '';
+  }
 
   if (isTimeout) {
     return { message: 'Request timed out. Please try again.', code: 'timeout', status, isTimeout, isNetworkError };
