@@ -31,7 +31,6 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "sentry-expo",
       [
         "expo-build-properties",
         {
