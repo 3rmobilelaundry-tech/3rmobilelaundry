@@ -27,6 +27,13 @@ function App() {
     }
   }, []);
 
+  // ensure root path always shows welcome screen
+  React.useEffect(() => {
+    if (route === '/') {
+      navigate('/welcome');
+    }
+  }, [route]);
+
   React.useEffect(() => {
     const onPop = () => setRoute(window.location.pathname);
     window.addEventListener('popstate', onPop);

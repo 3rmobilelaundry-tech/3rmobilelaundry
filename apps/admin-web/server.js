@@ -10,7 +10,9 @@ const mime = {
   '.ico': 'image/x-icon',
 };
 const server = http.createServer((req, res) => {
-  const urlPath = req.url === '/' ? '/index.html' : req.url;
+  // redirect root to welcome for initial landing
+  const incoming = req.url === '/' ? '/welcome' : req.url;
+  const urlPath = incoming === '/welcome' ? '/index.html' : incoming;
   const filePath = path.join(root, urlPath);
   fs.readFile(filePath, (err, data) => {
     if (err) {
