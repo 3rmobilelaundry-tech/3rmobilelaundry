@@ -1,0 +1,27 @@
+# Node and Expo
+node_modules/
+.expo/
+
+# Build outputs
+dist/
+web-build/
+
+# Mobile packages
+*.apk
+*.aab
+
+# OS and editor caches
+.DS_Store
+
+# Local development artifacts
+AppData/
+LocalLow/
+
+# Keystores and logs
+android/app/debug.keystore
+*.log
+cypress_results.txt
+webpack_log.txt
+search_results.txt
+*eas_whoami_admin.txt
+*eas_build_list_admin*.txt
