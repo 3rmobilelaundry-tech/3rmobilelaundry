@@ -7,5 +7,10 @@ module.exports = async function (env, argv) {
   
   config.output.publicPath = '/admin/';
   
+  config.resolve.fallback = {
+    ...config.resolve.fallback,
+    crypto: false,
+  };
+  
   return config;
 };
