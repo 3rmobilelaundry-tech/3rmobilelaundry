@@ -5,7 +5,7 @@ module.exports = async function (env, argv) {
   const config = await createExpoWebpackConfigAsync(env, argv);
   console.log('Output Path:', config.output.path);
   
-  config.output.publicPath = '/admin/';
+  config.output.publicPath = '/';
   
   config.resolve.fallback = {
     ...config.resolve.fallback,

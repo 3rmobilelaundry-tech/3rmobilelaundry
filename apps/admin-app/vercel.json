@@ -4,6 +4,12 @@
   "outputDirectory": "web-build",
   "public": false,
   "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/admin/:path*",
+      "destination": "/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
