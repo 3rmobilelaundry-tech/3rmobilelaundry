@@ -404,6 +404,58 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Signup route for creating head admin
+router.post('/signup', async (req, res) => {
+  try {
+    const { phone_number, password, name, role } = req.body;
+
+    // Validate required fields
+    if (!phone_number || !password || !name || !role) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    // Normalize phone number
+    const phoneResult = normalizeNigerianPhone(phone_number);
+    if (phoneResult.error) {
+      return res.status(400).json({ error: phoneResult.error, code: 'invalid_phone' });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ where: { phone_number: { [Op.in]: [phoneResult.normalized, phoneResult.local] } } });
+    if (existingUser) {
+      return res.status(409).json({ error: 'User already exists' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
+    const newUser = await User.create({
+      full_name: name,
+      phone_number: phoneResult.normalized,
+      password: hashedPassword,
+      role,
+      email_verified: true,
+      email_verified_at: new Date()
+    });
+
+    // Return success (don't return the password)
+    res.status(201).json({
+      message: 'User created successfully',
+      user: {
+        id: newUser.user_id,
+        phone: newUser.phone_number,
+        name: newUser.full_name,
+        role: newUser.role,
+      }
+    });
+
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Accept Staff Invite and Register
 router.post('/accept-invite', async (req, res) => {
   try {
