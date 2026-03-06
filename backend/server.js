@@ -81,6 +81,15 @@ app.use((req, res, next) => {
   });
   next();
 });
+// Serve Head Admin Web App (static build) under port 5000
+try {
+  const adminWebBuild = path.join(__dirname, 'public', 'admin');
+  app.use('/admin', express.static(adminWebBuild));
+  console.log('Admin web static mounted at /admin');
+} catch (e) {
+  console.warn('Failed to mount admin web static:', e.message);
+}
+
 // Routes
 app.use('/auth', authRoutes);
 app.use('/student', studentRoutes);
@@ -88,15 +97,6 @@ app.use('/admin', adminRoutes);
 app.use('/api', adminRoutes); // Mount admin routes at /api to support /api/staff
 app.use('/carousel', carouselRoutes);
 app.use('/webhooks', webhooksRoutes);
-
-// Serve Head Admin Web App (static build) under port 5000
-try {
-  const adminWebBuild = path.join(__dirname, '..', 'admin-app', 'web-build');
-  app.use('/admin-web', express.static(adminWebBuild));
-  console.log('Admin web static mounted at /admin-web');
-} catch (e) {
-  console.warn('Failed to mount admin web static:', e.message);
-}
 
 // Serve Student Web App (static build) under root
 try {
