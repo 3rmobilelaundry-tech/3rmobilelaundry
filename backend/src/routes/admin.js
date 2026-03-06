@@ -49,7 +49,7 @@ router.get('/events', async (req, res) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
     const user = await User.findByPk(decoded.user_id);
-    if (!user || !['admin', 'receptionist', 'rider', 'washer'].includes(user.role)) {
+    if (!user || !['admin', 'receptionist', 'rider', 'washer', 'head_admin'].includes(user.role)) {
         return res.status(403).json({ error: 'Unauthorized' });
     }
     // Connected
@@ -61,7 +61,7 @@ router.get('/events', async (req, res) => {
 
 // Middleware: all staff have access to these admin routes
 router.use(verifyToken);
-router.use(verifyRole(['rider', 'washer', 'receptionist', 'admin']));
+router.use(verifyRole(['rider', 'washer', 'receptionist', 'admin', 'head_admin']));
 
 const SETTINGS_PATH = path.join(__dirname, '..', 'config', 'app-settings.json');
 const FRONT_LOG_PATH = path.join(__dirname, '..', 'logs', 'frontend.log');
@@ -93,7 +93,7 @@ function emitPickupSync(req, action, order, fields = {}) {
   io.to(`pickup_order_${order.order_id}`).emit('pickup_event', payload);
 }
 
-const STAFF_ROLES = new Set(['admin', 'receptionist', 'washer', 'rider']);
+const STAFF_ROLES = new Set(['admin', 'receptionist', 'washer', 'rider', 'head_admin']);
 const isStaffRole = (role) => STAFF_ROLES.has(role);
 const buildStaffEmail = (title, message, meta = {}) => {
   const time = new Date().toISOString();

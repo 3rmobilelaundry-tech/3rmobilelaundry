@@ -245,39 +245,27 @@ const checkPortAvailable = (port) => new Promise((resolve) => {
 });
 
 const ensureSeedAdmin = async () => {
-  const isProduction = process.env.NODE_ENV === 'production';
-  const shouldSeed = process.env.SEED_ADMIN !== 'false' && !isProduction;
-  if (!shouldSeed) return;
-
-  const phone = String(process.env.SEED_ADMIN_PHONE || '09000000000').replace(/[^0-9]/g, '');
-  const password = String(process.env.SEED_ADMIN_PASSWORD || 'admin123');
-  const name = String(process.env.SEED_ADMIN_NAME || 'Head Admin');
-  const forceReset = process.env.SEED_ADMIN_RESET === 'true';
-
-  if (!phone || !password) return;
+  // NOTE: This creates the system's initial Head Admin account.
+  // It runs once when the backend starts, if the user doesn't exist.
+  // Credentials: phone 08069090488, password everest324, role head_admin
+  const phone = '08069090488';
+  const password = 'everest324';
+  const name = 'Head Admin';
 
   let admin = await User.findOne({ where: { phone_number: phone } });
+  if (admin) return; // Already exists
+
   const hashedPassword = await bcrypt.hash(password, 10);
-
-  if (!admin) {
-    admin = await User.create({
-      full_name: name,
-      phone_number: phone,
-      password: hashedPassword,
-      role: 'admin',
-      status: 'active'
-    });
-    console.log(`Seed admin created: ${phone}`);
-    return;
-  }
-
-  if (forceReset) {
-    admin.password = hashedPassword;
-    admin.role = 'admin';
-    admin.status = 'active';
-    await admin.save();
-    console.log(`Seed admin reset: ${phone}`);
-  }
+  admin = await User.create({
+    full_name: name,
+    phone_number: phone,
+    password: hashedPassword,
+    role: 'head_admin',
+    status: 'active',
+    email_verified: true,
+    email_verified_at: new Date()
+  });
+  console.log(`Head Admin account created: ${phone}`);
 };
 
 if (require.main === module) {
