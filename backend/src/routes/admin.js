@@ -994,21 +994,52 @@ router.post('/integrations/test/email', async (req, res) => {
         const current = readSettings();
         const base = current.integrations?.email || {};
         const merged = { ...base, ...payload };
-        const result = await IntegrationService.verifyEmailConfig(merged);
-        const host = String(merged.smtp_host || result.host || '');
+        
+        const host = String(merged.smtp_host || '').toLowerCase();
         const pass = String(merged.smtp_pass || '');
         const warnings = [];
-        if (host.toLowerCase().includes('gmail')) {
+
+        // Pre-check for Gmail specific requirements
+        if (host.includes('gmail')) {
             const stripped = pass.replace(/\s/g, '');
+            // Gmail App Passwords are 16 chars. Regular passwords are usually different.
+            // If it's the exact length of a normal password, we can't be sure, but we can warn if it looks like a normal password (e.g. < 16 chars or > 16 chars without spaces, though app passwords are fixed 16).
             if (stripped.length !== 16) {
-                warnings.push('Gmail SMTP requires a 16-character App Password, not your normal account password.');
+                warnings.push('Gmail requires a 16-character App Password (not your login password). Enable 2FA and generate one at myaccount.google.com/apppasswords.');
             }
         }
-        const mode = result.secure ? 'SSL' : result.requireTLS ? 'STARTTLS' : 'PLAIN';
-        const message = `Email SMTP connection verified (${mode} on port ${result.port}).`;
-        res.json({ status: 'success', message, warnings, details: result });
+
+        try {
+            const result = await IntegrationService.verifyEmailConfig(merged);
+            const mode = result.secure ? 'SSL' : result.requireTLS ? 'STARTTLS' : 'PLAIN';
+            let message = `Email SMTP connection verified (${mode} on port ${result.port}).`;
+            if (warnings.length > 0) {
+                message += `\n\nWarnings: ${warnings.join(' ')}`;
+            }
+            res.json({ status: 'success', message, warnings, details: result });
+        } catch (verifyError) {
+            let errorMessage = verifyError.message;
+            
+            // Enhance error message based on code
+            if (verifyError.code === 'EAUTH') {
+                errorMessage = 'Authentication failed. Check username/password.';
+                if (host.includes('gmail')) {
+                    errorMessage += ' For Gmail, you MUST use an App Password.';
+                }
+            } else if (verifyError.code === 'ESOCKET') {
+                errorMessage = 'Connection failed (Socket Error). Check host/port and SSL settings.';
+            } else if (verifyError.code === 'ETIMEDOUT') {
+                errorMessage = 'Connection timed out. Check firewall or port blocking.';
+            }
+
+            if (warnings.length > 0) {
+                errorMessage += ` Hint: ${warnings.join(' ')}`;
+            }
+            
+            res.status(400).json({ error: errorMessage, original_error: verifyError.message });
+        }
     } catch (e) {
-        res.status(400).json({ error: e.message });
+        res.status(500).json({ error: e.message });
     }
 });
 

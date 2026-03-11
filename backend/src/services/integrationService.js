@@ -262,7 +262,9 @@ const IntegrationService = {
         user: resolved.user,
         from: resolved.from,
         secure: transportOptions.secure,
-        requireTLS: transportOptions.requireTLS
+        requireTLS: transportOptions.requireTLS,
+        errorCode: e.code,
+        errorMessage: e.message
       });
       throw e;
     }
