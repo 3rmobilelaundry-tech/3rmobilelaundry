@@ -251,16 +251,15 @@ const ensureSeedAdmin = async () => {
   const email = '3rmobilelaundry@gmail.com';
   const password = 'Everest324';
   const name = 'Head Admin';
-  // Use a dummy phone number since it is required and must be unique
-  const dummyPhone = '00000000000';
+  const phone = '08069090488';
 
   let admin = await User.findOne({ where: { email } });
   if (admin) return; // Already exists
 
-  // Check if dummy phone exists to avoid unique constraint error
-  const phoneExists = await User.findOne({ where: { phone_number: dummyPhone } });
+  // Check if phone exists to avoid unique constraint error
+  const phoneExists = await User.findOne({ where: { phone_number: phone } });
   if (phoneExists) {
-      console.warn('Head Admin creation skipped: Dummy phone number already in use, but email not found.');
+      console.warn('Head Admin creation skipped: Phone number already in use, but email not found.');
       return;
   }
 
@@ -268,7 +267,7 @@ const ensureSeedAdmin = async () => {
   admin = await User.create({
     full_name: name,
     email: email,
-    phone_number: dummyPhone,
+    phone_number: phone,
     password: hashedPassword,
     role: 'head_admin',
     status: 'active',

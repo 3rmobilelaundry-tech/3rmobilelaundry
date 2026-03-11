@@ -52,7 +52,7 @@ export default function LoginScreen({ navigation }) {
   const handleLogin = async () => {
     console.log('AdminApp: Login attempt', phone);
     if (!phone || !password) {
-      Alert.alert('Error', 'Please enter Phone and Password');
+      Alert.alert('Error', 'Please enter Phone/Email and Password');
       return;
     }
 
@@ -85,10 +85,10 @@ export default function LoginScreen({ navigation }) {
 
         <TextInput
           style={styles.input}
-          placeholder="Phone Number"
+          placeholder="Phone Number or Email"
           value={phone}
           onChangeText={setPhone}
-          keyboardType="phone-pad"
+          keyboardType="default"
           autoCapitalize="none"
         />
 

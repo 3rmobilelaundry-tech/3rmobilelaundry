@@ -227,11 +227,29 @@ export const tryDevDefaultLogin = (phone_number, password) => {
   }
   
   // Otherwise, proceed with actual API login
-  return api.post('/auth/login', { phone_number, password });
+  // Support both phone_number and email login
+  const payload = {};
+  if (phone_number.includes('@')) {
+    payload.email = phone_number;
+  } else {
+    payload.phone_number = phone_number;
+  }
+  payload.password = password;
+  
+  return api.post('/auth/login', payload);
 };
 
 export const auth = {
-  login: (phone_number, password) => api.post('/auth/login', { phone_number, password }),
+  login: (identifier, password) => {
+    const payload = {};
+    if (identifier.includes('@')) {
+      payload.email = identifier;
+    } else {
+      payload.phone_number = identifier;
+    }
+    payload.password = password;
+    return api.post('/auth/login', payload);
+  },
   register: (userData) => api.post('/auth/register', userData),
   logout: () => api.post('/auth/logout')
 };

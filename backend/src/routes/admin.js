@@ -47,16 +47,16 @@ router.get('/events', async (req, res) => {
   if (!token) return res.status(401).json({ error: 'Token required' });
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-    const user = await User.findByPk(decoded.user_id);
-    if (!user || !['admin', 'receptionist', 'rider', 'washer', 'head_admin'].includes(user.role)) {
-        return res.status(403).json({ error: 'Unauthorized' });
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        const user = await User.findByPk(decoded.user_id);
+        if (!user || !['admin', 'receptionist', 'rider', 'washer', 'head_admin'].includes(user.role)) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        // Connected
+        sse.addClient(res);
+    } catch (e) {
+        res.status(401).json({ error: 'Invalid token' });
     }
-    // Connected
-    sse.addClient(res);
-  } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
-  }
 });
 
 // Middleware: all staff have access to these admin routes
