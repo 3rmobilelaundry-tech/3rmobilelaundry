@@ -34,7 +34,7 @@ export const API_URL = Platform.OS === 'web' ? BASE_URL_WEB : BASE_URL_NATIVE;
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 15000,
+  timeout: 60000, // Increased to 60s for slow operations like email testing
 });
 
 export const normalizeApiError = (error) => {

@@ -71,15 +71,23 @@ function buildTransportOptions(config) {
   const port = Number(config.port);
   const secure = port === 465;
   const requireTLS = port === 587;
+  
+  // Gmail App Passwords often contain spaces, but SMTP might need them removed.
+  // Nodemailer usually handles this, but let's be safe for Gmail.
+  let pass = config.pass;
+  if (config.host && config.host.includes('gmail')) {
+      pass = pass.replace(/\s/g, '');
+  }
+
   return {
     host: config.host,
     port,
     secure,
     requireTLS,
-    auth: { user: config.user, pass: config.pass },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 20000
+    auth: { user: config.user, pass: pass },
+    connectionTimeout: 30000, // Increased to 30s
+    greetingTimeout: 30000,   // Increased to 30s
+    socketTimeout: 30000      // Increased to 30s
   };
 }
 
