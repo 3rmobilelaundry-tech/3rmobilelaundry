@@ -1,0 +1,110 @@
+{
+  "branding": {
+    "app_name": "3R Laundry PRO",
+    "logo_url": "/uploads/file-1770143072811-543913793.png",
+    "description": "Updated Description via Test"
+  },
+  "theme": {
+    "primary": "#2563EB",
+    "accent": "#111827",
+    "dark_mode": false
+  },
+  "emergency": {
+    "enabled": true,
+    "available": true,
+    "pricing_mode": "per_item",
+    "price_per_item": 700,
+    "base_fee": 0,
+    "delivery_window_text": "Delivered within 2–8 hours (same day)",
+    "description": "Same-day delivery within 2–8 hours",
+    "estimated_completion_text": "2–8 hours",
+    "estimated_completion_minutes": 360,
+    "instructions": "Please Get your laundry ready befor the Rider gets to your location.",
+    "restrictions": "",
+    "updated_at": null,
+    "version": 0
+  },
+  "integrations": {
+    "paystack": {
+      "enabled": true,
+      "public_key": "pk_live_a341eeb5a204ff1201f26f6c69dee60dd060c5a2",
+      "secret_key": "sk_live_842ec7debb407462df010bb0baf5621304b30e5d"
+    },
+    "whatsapp": {
+      "enabled": true,
+      "api_key": "token_123",
+      "phone_number_id": "phone_123"
+    },
+    "email": {
+      "enabled": true,
+      "smtp_host": "smtp.gmail.com",
+      "smtp_port": 465,
+      "smtp_user": "3rmobilelaundry@gmail.com",
+      "smtp_pass": "wnoa enad jmpt tqap"
+    }
+  },
+  "operations": {
+    "extra_item_price": 750,
+    "processing_timeline_text": "Laundry is ready within 24–48 hours after pickup.",
+    "pickup_windows": [
+      {
+        "day": "tue",
+        "start": "08:00",
+        "end": "12:00"
+      },
+      {
+        "day": "Mon",
+        "start": "09:00",
+        "end": "11:00"
+      }
+    ],
+    "pickup_time_frame": {
+      "day": "Friday",
+      "blocks": {
+        "morning": {
+          "start": "08:00",
+          "end": "11:00"
+        },
+        "afternoon": {
+          "start": "12:00",
+          "end": "16:00"
+        },
+        "evening": {
+          "start": "17:00",
+          "end": "18:00"
+        }
+      },
+      "days": [
+        "Friday",
+        "Tuesday",
+        "Wednesday"
+      ],
+      "pickup_days": [
+        "Friday",
+        "Tuesday",
+        "Wednesday"
+      ]
+    }
+  },
+  "rules": {},
+  "notifications": {
+    "templates": {}
+  },
+  "payments": {
+    "paystack": {
+      "enabled": true,
+      "public_key": "pk_test_123",
+      "secret_key": "sk_test_123"
+    },
+    "bank_accounts": [
+      {
+        "id": "1770956924626",
+        "bank_name": "MONIE POINT BANK",
+        "account_name": "3R LAUNDRY SERVICE VENTURE",
+        "account_number": "8069090488",
+        "active": true
+      }
+    ]
+  },
+  "version": 6
+}

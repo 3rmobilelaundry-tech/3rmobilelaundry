@@ -1,0 +1,17 @@
+{
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "lang": "en",
+  "name": "3R Laundry Admin",
+  "short_name": "3R Laundry Admin",
+  "start_url": "/?utm_source=web_app_manifest",
+  "orientation": "portrait",
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "http://play.google.com/store/apps/details?id=com.threelaundry.staff",
+      "id": "com.threelaundry.staff"
+    }
+  ],
+  "prefer_related_applications": true
+}
