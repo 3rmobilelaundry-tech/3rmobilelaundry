@@ -214,7 +214,7 @@ export default function ChatScreen({ route, navigation }) {
   }, [orderId]);
 
   const handleTyping = (text) => {
-    if (myRole === 'admin' || (chatStatus === 'locked' && myRole !== 'rider')) {
+    if (myRole === 'admin' || myRole === 'head_admin' || (chatStatus === 'locked' && myRole !== 'rider')) {
       setMessage(text);
       return;
     }
@@ -231,7 +231,7 @@ export default function ChatScreen({ route, navigation }) {
   };
 
   const sendMessage = () => {
-    if (myRole === 'admin' || (chatStatus === 'locked' && myRole !== 'rider')) return;
+    if (myRole === 'admin' || myRole === 'head_admin' || (chatStatus === 'locked' && myRole !== 'rider')) return;
     if (!message.trim()) return;
     
     const tempId = Date.now();
@@ -291,7 +291,7 @@ export default function ChatScreen({ route, navigation }) {
     if (!isMe) {
         if (item.sender_role === 'student' || item.sender_role === 'user') roleLabel = 'USER';
         else if (item.sender_role === 'rider') roleLabel = 'RIDER';
-        else if (item.sender_role === 'admin') roleLabel = 'ADMIN';
+        else if (item.sender_role === 'admin' || item.sender_role === 'head_admin') roleLabel = 'ADMIN';
         else roleLabel = item.sender_role ? item.sender_role.toUpperCase() : 'UNKNOWN';
     }
 
@@ -373,9 +373,9 @@ export default function ChatScreen({ route, navigation }) {
       )}
 
       <View style={styles.inputContainer}>
-        {(myRole === 'admin' || (chatStatus === 'locked' && myRole !== 'rider')) && (
+        {(myRole === 'admin' || myRole === 'head_admin' || (chatStatus === 'locked' && myRole !== 'rider')) && (
           <Text style={styles.lockedText}>
-            {myRole === 'admin' ? 'Read-only access.' : 'This chat is closed because the order has been completed.'}
+            {(myRole === 'admin' || myRole === 'head_admin') ? 'Read-only access.' : 'This chat is closed because the order has been completed.'}
           </Text>
         )}
         <TextInput
@@ -384,9 +384,9 @@ export default function ChatScreen({ route, navigation }) {
           onChangeText={handleTyping}
           placeholder="Type a message..."
           onSubmitEditing={sendMessage}
-          editable={myRole !== 'admin' && (chatStatus !== 'locked' || myRole === 'rider')}
+          editable={myRole !== 'admin' && myRole !== 'head_admin' && (chatStatus !== 'locked' || myRole === 'rider')}
         />
-        <TouchableOpacity onPress={sendMessage} style={styles.sendButton} disabled={!message.trim() || myRole === 'admin' || (chatStatus === 'locked' && myRole !== 'rider')}>
+        <TouchableOpacity onPress={sendMessage} style={styles.sendButton} disabled={!message.trim() || myRole === 'admin' || myRole === 'head_admin' || (chatStatus === 'locked' && myRole !== 'rider')}>
           <Ionicons name="send" size={24} color={message.trim() ? tokens.colors.primary : '#ccc'} />
         </TouchableOpacity>
       </View>

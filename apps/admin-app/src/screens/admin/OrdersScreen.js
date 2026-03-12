@@ -28,8 +28,7 @@ export default function OrdersScreen({ lastUpdate, currentUser }) {
   const [modalType, setModalType] = useState(null); // 'create', 'accept', 'edit', 'deliver', 'status'
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [formData, setFormData] = useState({});
-
-  const isHeadAdmin = currentUser?.role === 'admin';
+  const isHeadAdmin = currentUser?.role === 'admin' || currentUser?.role === 'head_admin';
   const isReceptionist = currentUser?.role === 'receptionist';
 
   const fetchOrders = useCallback(async () => {

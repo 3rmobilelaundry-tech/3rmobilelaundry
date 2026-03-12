@@ -116,7 +116,7 @@ const SchoolDropdown = ({ value, onSelect, onOpen, loading, schools, error, load
 
 export default function UsersScreen({ lastUpdate, currentUser }) {
   const { lastEvent } = useSync();
-  const isHeadAdmin = currentUser?.role === 'admin';
+  const isHeadAdmin = currentUser?.role === 'admin' || currentUser?.role === 'head_admin';
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(false);

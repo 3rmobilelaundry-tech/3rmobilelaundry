@@ -52,9 +52,9 @@ export default function PaymentsScreen({ currentUser, readOnly }) {
   const [reference, setReference] = useState('');
 
   const isReceptionist = currentUser?.role === 'receptionist';
-  const canUpdateStatus = !readOnly && (currentUser?.role === 'admin' || currentUser?.role === 'receptionist');
-  const canCreatePayment = !readOnly && currentUser?.role === 'admin';
-  const canEditPayment = !readOnly && (currentUser?.role === 'admin' || currentUser?.role === 'receptionist');
+  const canUpdateStatus = !readOnly && (currentUser?.role === 'admin' || currentUser?.role === 'head_admin' || currentUser?.role === 'receptionist');
+  const canCreatePayment = !readOnly && (currentUser?.role === 'admin' || currentUser?.role === 'head_admin');
+  const canEditPayment = !readOnly && (currentUser?.role === 'admin' || currentUser?.role === 'head_admin' || currentUser?.role === 'receptionist');
 
   const showToast = useCallback((message, type = 'info') => {
     setToast({ visible: true, message, type });

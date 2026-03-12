@@ -97,7 +97,7 @@ export default function DashboardScreen({ route, navigation }) {
           <Button title="Mark Ready" onPress={() => handleUpdateStatus(item.order_id, 'ready')} />
         )}
 
-        {(user.role === 'receptionist' || user.role === 'admin') && item.status === 'ready' && (
+        {(user.role === 'receptionist' || user.role === 'admin' || user.role === 'head_admin') && item.status === 'ready' && (
           <Button
             title="Release (Scan)"
             onPress={() => {
@@ -110,7 +110,7 @@ export default function DashboardScreen({ route, navigation }) {
         )}
 
         {/* Admin/Washer can start processing picked up items */}
-        {(user.role === 'admin' || user.role === 'washer') && item.status === 'picked_up' && (
+        {(user.role === 'admin' || user.role === 'head_admin' || user.role === 'washer') && item.status === 'picked_up' && (
            <Button title="Start Washing" onPress={() => handleUpdateStatus(item.order_id, 'processing')} color="orange" />
         )}
       </View>
@@ -122,7 +122,7 @@ export default function DashboardScreen({ route, navigation }) {
       <Text style={styles.header}>Staff Portal: {user.role.toUpperCase()}</Text>
       <Text style={styles.subHeader}>Welcome, {user.full_name}</Text>
 
-      {user.role === 'admin' && (
+      {(user.role === 'admin' || user.role === 'head_admin') && (
         <View style={{ marginBottom: 20 }}>
           <Button
             title="Manage Plans"
