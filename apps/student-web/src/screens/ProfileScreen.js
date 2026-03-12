@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Linking, Animated, Image, ScrollView, RefreshControl, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Linking, Animated, Image, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import { theme } from '../constants/theme';
 import { student, normalizeApiError } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSync } from '../context/SyncContext';
+import PageLayout from '../components/PageLayout';
 
 export default function ProfileScreen({ navigation, route }) {
   const { user: initialUser } = route.params || {};
@@ -145,21 +146,18 @@ export default function ProfileScreen({ navigation, route }) {
   }
 
   return (
-    <View style={styles.mainContainer}>
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        showsVerticalScrollIndicator={true}
-        bounces={true}
-        overScrollMode="always"
-      >
-        <View style={[styles.headerWrap, { paddingTop: Math.max(insets.top, 20) + 10 }]}>
-          <Text style={styles.header} accessibilityRole="header">Profile</Text>
+    <PageLayout 
+      user={user} 
+      refreshing={refreshing} 
+      onRefresh={onRefresh}
+      noPadding
+    >
+      <Animated.View style={[styles.content, { opacity: fade }]}>
+        <View style={styles.header}>
+            <Text style={styles.headerTitle}>Profile</Text>
         </View>
 
-        <Animated.View style={[styles.content, { opacity: fade }]}>
-          <View style={styles.card} accessibilityRole="summary">
+        <View style={styles.card} accessibilityRole="summary">
           <View style={styles.avatar}>
             {avatarUri && !avatarLoadError ? (
               <Image source={{ uri: avatarUri }} style={styles.avatarImage} resizeMode="cover" onError={() => setAvatarLoadError(true)} />
@@ -248,9 +246,8 @@ export default function ProfileScreen({ navigation, route }) {
         </TouchableOpacity>
         
         <Text style={styles.version}>Version 1.0.0</Text>
-        </Animated.View>
-      </ScrollView>
-    </View>
+      </Animated.View>
+    </PageLayout>
   );
 }
 
@@ -259,28 +256,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 120,
-  },
-  headerWrap: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    marginBottom: 10,
-  },
-  header: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-  },
   content: {
     paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  header: {
+    marginBottom: 12,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: theme.colors.text,
   },
   card: {
     backgroundColor: theme.colors.surface,

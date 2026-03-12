@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSync } from '../context/SyncContext';
 import { student } from '../services/api';
 import { Ionicons } from '@expo/vector-icons';
+import PageLayout from '../components/PageLayout';
 
 export default function CodesScreen({ route }) {
   const { user } = route.params || {};
@@ -52,14 +53,17 @@ export default function CodesScreen({ route }) {
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>My Codes</Text>
-      <Text style={styles.sub}>Show these codes when collecting laundry</Text>
+    <PageLayout user={user} scrollable={false} noPadding refreshing={refreshing} onRefresh={onRefresh}>
+      <View style={styles.fixedHeader}>
+        <Text style={styles.title}>My Codes</Text>
+        <Text style={styles.sub}>Show these codes when collecting laundry</Text>
+      </View>
 
       <FlatList
         data={allCodes}
         keyExtractor={(item) => String(item.code_id)}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <>
             <View style={[styles.card, activeRelease && styles.cardActive]}>
@@ -93,7 +97,9 @@ export default function CodesScreen({ route }) {
           </>
         }
         ListEmptyComponent={
-          <Text style={styles.emptyList}>No active orders</Text>
+          <View style={styles.emptyState}>
+             <Text style={styles.emptyList}>No active codes found</Text>
+          </View>
         }
         renderItem={({ item }) => (
           <View style={styles.item}>
@@ -113,33 +119,45 @@ export default function CodesScreen({ route }) {
           </View>
         )}
       />
-    </View>
+    </PageLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC', padding: 16 },
-  title: { fontSize: 20, fontWeight: 'bold' },
-  sub: { color: '#6B7280', marginBottom: 12 },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16 },
-  cardActive: { backgroundColor: '#10B981' },
-  label: { color: '#374151' },
+  fixedHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 10,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  listContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
+  sub: { color: '#6B7280', marginTop: 4, fontSize: 14 },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9' },
+  cardActive: { backgroundColor: '#10B981', borderColor: '#059669' },
+  label: { color: '#374151', fontSize: 14, fontWeight: '600' },
   labelActive: { color: '#D1FAE5' },
-  code: { fontSize: 24, fontWeight: 'bold', letterSpacing: 2, color: '#111827' },
-  codeActive: { color: '#ECFDF5' },
-  small: { color: '#6B7280', marginTop: 6 },
+  code: { fontSize: 32, fontWeight: '800', letterSpacing: 4, color: '#111827', marginVertical: 8, textAlign: 'center' },
+  codeActive: { color: '#fff' },
+  small: { color: '#6B7280', fontSize: 13 },
   smallActive: { color: '#ECFDF5' },
   emptyIcon: { alignItems: 'center', marginBottom: 6 },
-  emptyTitle: { textAlign: 'center', fontWeight: 'bold', color: '#111827' },
-  emptySub: { textAlign: 'center', color: '#6B7280', marginTop: 4 },
-  sectionTitle: { fontWeight: 'bold', marginBottom: 8 },
-  emptyList: { color: '#6B7280' },
-  item: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10 },
+  emptyTitle: { textAlign: 'center', fontWeight: 'bold', color: '#111827', fontSize: 16 },
+  emptySub: { textAlign: 'center', color: '#6B7280', marginTop: 4, fontSize: 13 },
+  sectionTitle: { fontWeight: 'bold', marginBottom: 12, fontSize: 16, marginTop: 8 },
+  emptyList: { color: '#9CA3AF', textAlign: 'center', marginTop: 20 },
+  emptyState: { alignItems: 'center', padding: 20 },
+  item: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9' },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  orderId: { fontWeight: 'bold', color: '#111827' },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  badgeText: { color: '#fff', fontSize: 12 },
+  orderId: { fontWeight: 'bold', color: '#111827', fontSize: 16 },
+  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   badgeReady: { backgroundColor: '#10B981' },
   badgePickup: { backgroundColor: '#F59E0B' },
-  badgeInline: { alignSelf: 'flex-start', marginTop: 8 }
+  badgeInline: { alignSelf: 'flex-start', marginTop: 12, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }
 });

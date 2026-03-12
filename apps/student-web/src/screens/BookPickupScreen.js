@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, TouchableOpacity, Platform, ActivityIndicator, Modal, Linking } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Alert, TouchableOpacity, Platform, ActivityIndicator, Modal, Linking, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { student } from '../services/api';
 import { theme } from '../constants/theme';
 import { useSync } from '../context/SyncContext';
+import PageLayout from '../components/PageLayout';
 
 export default function BookPickupScreen({ route, navigation }) {
   const { user, mode, emergencyConfig: emergencyFromRoute } = route.params || {};
@@ -468,18 +469,24 @@ export default function BookPickupScreen({ route, navigation }) {
   const isDecrementDisabled = safeCount <= lowerBound;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{isEmergency ? 'Emergency Laundry' : 'Book Pickup'}</Text>
-        <Text style={styles.sub}>{isEmergency ? 'Same-day delivery within hours' : 'Schedule a laundry pickup'}</Text>
-      </View>
-
-      {configLoading ? (
-        <View style={styles.loadingCard}>
-          <ActivityIndicator size="large" color={theme.colors.secondary} style={{ marginBottom: 12 }} />
-          <Text style={styles.loadingText}>{isEmergency ? 'Preparing emergency request' : 'Loading available pickup slots'}</Text>
+    <PageLayout 
+      user={user} 
+      showBack 
+      title={isEmergency ? 'Emergency Laundry' : 'Book Pickup'}
+      scrollable={false}
+      noPadding
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.header}>
+          <Text style={styles.sub}>{isEmergency ? 'Same-day delivery within hours' : 'Schedule a laundry pickup'}</Text>
         </View>
-      ) : (
+
+        {configLoading ? (
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={theme.colors.secondary} style={{ marginBottom: 12 }} />
+            <Text style={styles.loadingText}>{isEmergency ? 'Preparing emergency request' : 'Loading available pickup slots'}</Text>
+          </View>
+        ) : (
         <>
           {!isEmergency && (
             <>
@@ -685,11 +692,13 @@ export default function BookPickupScreen({ route, navigation }) {
         </View>
       </Modal>
       )}
-    </View>
+      </ScrollView>
+    </PageLayout>
   );
 }
 
 const styles = StyleSheet.create({
+  scrollContent: { paddingHorizontal: 16, paddingTop: 18, paddingBottom: 40 },
   container: { flex: 1, backgroundColor: theme.colors.background, paddingHorizontal: 16, paddingTop: 18 },
   header: { marginBottom: 14 },
   title: { fontSize: 24, fontWeight: '800', color: theme.colors.text },

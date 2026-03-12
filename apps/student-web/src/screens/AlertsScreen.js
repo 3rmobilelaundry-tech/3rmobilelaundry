@@ -5,6 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { theme } from '../constants/theme';
 import api, { student } from '../services/api';
 import { useSync } from '../context/SyncContext';
+import PageLayout from '../components/PageLayout';
 
 export default function AlertsScreen({ route }) {
   const { user } = route.params || {};
@@ -77,18 +78,17 @@ export default function AlertsScreen({ route }) {
     );
   };
 
-  if (loading && !refreshing) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={theme.typography.h2}>Notifications</Text>
+    <PageLayout 
+      user={user} 
+      loading={loading} 
+      refreshing={refreshing} 
+      onRefresh={onRefresh}
+      scrollable={false}
+      noPadding
+    >
+      <View style={styles.fixedHeader}>
+        <Text style={styles.pageTitle}>Notifications</Text>
         {notifications.length > 0 && (
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{notifications.length}</Text>
@@ -111,37 +111,32 @@ export default function AlertsScreen({ route }) {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
         />
       )}
-    </View>
+    </PageLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
+  fixedHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.xl,
-    paddingBottom: theme.spacing.md,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 12,
     backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-    ...theme.shadows.sm,
+  },
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: theme.colors.text,
   },
   countBadge: {
     backgroundColor: theme.colors.error,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    marginLeft: theme.spacing.sm,
+    marginLeft: 8,
   },
   countText: {
     color: 'white',
@@ -149,23 +144,28 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   listContent: {
-    padding: theme.spacing.md,
+    padding: 16,
+    paddingBottom: 40,
   },
   card: {
     flexDirection: 'row',
     backgroundColor: theme.colors.surface,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   unreadCard: {
-    backgroundColor: theme.colors.primaryLight, // Highlight unread
+    backgroundColor: '#F0F9FF', // Light blue highlight
     borderLeftWidth: 4,
     borderLeftColor: theme.colors.primary,
   },
   iconContainer: {
-    marginRight: theme.spacing.md,
+    marginRight: 12,
     justifyContent: 'flex-start',
     marginTop: 2,
   },
@@ -201,16 +201,18 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: theme.spacing.xl,
+    padding: 20,
   },
   emptyTitle: {
-    ...theme.typography.h3,
-    marginTop: theme.spacing.lg,
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 20,
+    color: theme.colors.text,
   },
   emptySub: {
-    ...theme.typography.body,
-    color: theme.colors.textTertiary,
+    fontSize: 14,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
-    marginTop: theme.spacing.sm,
+    marginTop: 8,
   },
 });

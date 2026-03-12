@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, Alert, Linking, ActivityIndicator, Image, useWindowDimensions, Modal, TextInput, KeyboardAvoidingView, Platform, Pressable, AccessibilityInfo, findNodeHandle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking, Image, useWindowDimensions, Modal, TextInput, KeyboardAvoidingView, Platform, Pressable, AccessibilityInfo, findNodeHandle, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -7,7 +7,7 @@ import { useSync } from '../context/SyncContext';
 import { student, normalizeApiError } from '../services/api';
 import { theme } from '../constants/theme';
 import Carousel from '../components/Carousel';
-import SkeletonLoader from '../components/SkeletonLoader';
+import PageLayout from '../components/PageLayout';
 
 // --- Constants & Helpers ---
 
@@ -30,13 +30,6 @@ const PENDING_KEY = 'bank_transfer_pending';
 const SUCCESS_UNTIL_KEY = 'bank_transfer_success_until';
 const LEGACY_SUCCESS_KEY = 'bank_transfer_success';
 const EMERGENCY_CACHE_KEY = 'emergency_config_cache';
-
-const getGreeting = () => {
-  const hours = new Date().getHours();
-  if (hours < 12) return 'Good Morning';
-  if (hours < 18) return 'Good Afternoon';
-  return 'Good Evening';
-};
 
 const getDaysRemaining = (endDate) => {
   const diff = new Date(endDate) - new Date();
@@ -108,15 +101,8 @@ export default function HomeScreen({ navigation, route }) {
   const { lastEvent } = useSync();
   const { width: screenWidth } = useWindowDimensions();
   const successTimeoutRef = useRef(null);
-  const [avatarCacheKey, setAvatarCacheKey] = useState('');
-  const [avatarLoadError, setAvatarLoadError] = useState(false);
   const emergencyNameRef = useRef(null);
-  const buildAvatarUri = useCallback((uri, cacheKey) => {
-    if (!uri) return '';
-    if (!cacheKey) return uri;
-    const joiner = uri.includes('?') ? '&' : '?';
-    return `${uri}${joiner}v=${cacheKey}`;
-  }, []);
+  
   const [illustrationAspectRatio, setIllustrationAspectRatio] = useState(1);
   const illustrationSource = useMemo(() => {
     if (typeof homescreenIllustration === 'number' && Image.resolveAssetSource) {
@@ -125,7 +111,6 @@ export default function HomeScreen({ navigation, route }) {
     return homescreenIllustration;
   }, []);
   const illustrationHeight = useMemo(() => Math.round(screenWidth / illustrationAspectRatio), [screenWidth, illustrationAspectRatio]);
-  const scrollPaddingBottom = useMemo(() => Math.max(120, Math.round(illustrationHeight * 0.55)), [illustrationHeight]);
   const emergencyModalWidth = useMemo(() => Math.min(screenWidth - 32, 520), [screenWidth]);
   const primaryActiveOrder = emergencyOrder || activeOrder;
 
@@ -151,14 +136,6 @@ export default function HomeScreen({ navigation, route }) {
     }
     setIllustrationAspectRatio(1.8);
   }, [illustrationSource]);
-  const avatarCacheSeed = useMemo(() => (
-    avatarCacheKey || user?.avatar_updated_at || user?.updated_at || ''
-  ), [avatarCacheKey, user?.avatar_updated_at, user?.updated_at]);
-  const avatarUri = useMemo(() => buildAvatarUri(user?.avatar_url, avatarCacheSeed), [buildAvatarUri, user?.avatar_url, avatarCacheSeed]);
-
-  useEffect(() => {
-    setAvatarLoadError(false);
-  }, [avatarUri]);
 
   useEffect(() => {
     if (!emergencyModalVisible) return;
@@ -353,11 +330,6 @@ export default function HomeScreen({ navigation, route }) {
         const parsedUser = storedUser ? JSON.parse(storedUser) : null;
         if (parsedUser?.user_id && isActive) {
           setUser(parsedUser);
-        }
-        const userId = parsedUser?.user_id || user?.user_id;
-        if (userId) {
-          const cacheKey = await AsyncStorage.getItem(`avatar_cache_buster_${userId}`);
-          if (isActive) setAvatarCacheKey(cacheKey || '');
         }
       };
       hydrateUser();
@@ -577,80 +549,479 @@ export default function HomeScreen({ navigation, route }) {
     }
   };
 
-  // Memoize static parts of UI or use simple variables
-  const greeting = useMemo(() => getGreeting(), []);
-
-  if (loading && !refreshing) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.scrollContent}>
-           {/* Header Skeleton */}
-           <View style={[styles.header, { alignItems: 'center' }]}>
-              <View>
-                 <SkeletonLoader width={100} height={14} style={{ marginBottom: 8 }} />
-                 <SkeletonLoader width={180} height={24} style={{ marginBottom: 8 }} />
-                 <SkeletonLoader width={120} height={14} />
-              </View>
-              <SkeletonLoader width={48} height={48} borderRadius={24} />
-           </View>
-           
-           {/* Carousel Skeleton */}
-           <SkeletonLoader width={'100%'} height={180} borderRadius={16} style={{ marginBottom: 24 }} />
-
-           {/* Plan Card Skeleton */}
-           <SkeletonLoader width={'100%'} height={150} borderRadius={16} style={{ marginBottom: 24 }} />
-
-           {/* Quick Actions Skeleton */}
-           <View style={{ flexDirection: 'row', gap: 12 }}>
-              <SkeletonLoader width={'48%'} height={100} borderRadius={16} />
-              <SkeletonLoader width={'48%'} height={100} borderRadius={16} />
-           </View>
-        </View>
-      </View>
-    );
-  }
+  const background = (
+    <View style={[styles.backgroundIllustrationWrap, { height: illustrationHeight }]} pointerEvents="none">
+      <Image source={homescreenIllustration} style={[styles.backgroundIllustration, { width: screenWidth, height: illustrationHeight }]} resizeMode="contain" />
+      <View style={styles.backgroundOverlay} />
+    </View>
+  );
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.backgroundIllustrationWrap, { height: illustrationHeight }]} pointerEvents="none">
-        <Image source={homescreenIllustration} style={[styles.backgroundIllustration, { width: screenWidth, height: illustrationHeight }]} resizeMode="contain" />
-        <View style={styles.backgroundOverlay} />
-      </View>
-      <ScrollView 
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollPaddingBottom }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[THEME.primary]} />}
-      >
-        {/* 1. HEADER */}
-        <View style={styles.header}>
-          <View style={styles.headerInfo}>
-            <View style={styles.greetingRow}>
-              <Ionicons name="sunny-outline" size={16} color={THEME.textLight} />
-              <Text style={styles.greeting}>{greeting}</Text>
-            </View>
-            <Text style={styles.userName}>{user.full_name?.split(' ')[0]}!</Text>
-            <Text style={styles.institution}>{user.school || 'Student'}</Text>
+    <PageLayout 
+      user={user} 
+      loading={loading}
+      refreshing={refreshing} 
+      onRefresh={onRefresh}
+      background={background}
+    >
+        {successTransfer && (
+          <View style={styles.successBanner}>
+            <Ionicons name="checkmark-circle-outline" size={18} color="#065F46" />
+            <Text style={styles.successBannerText}>
+              Your bank transfer is successful.
+            </Text>
           </View>
-          <TouchableOpacity onPress={() => safeNav('Profile', { user })} style={styles.profileBtn} activeOpacity={0.8}>
-            <View style={styles.profileBadge}>
-              {avatarUri && !avatarLoadError ? (
-                <Image
-                  source={{ uri: avatarUri }}
-                  style={styles.profileAvatar}
-                  resizeMode="cover"
-                  onError={() => setAvatarLoadError(true)}
-                />
-              ) : (
-                <Ionicons name="person-outline" size={22} color={THEME.primary} />
-              )}
-              {refreshing && avatarUri ? (
-                <View style={styles.profileAvatarOverlay}>
-                  <ActivityIndicator color="#fff" size="small" />
+        )}
+        {(pendingTransfer || pendingTransferStored) && (
+          <View style={styles.pendingBanner}>
+            <Ionicons name="time-outline" size={18} color="#92400E" />
+            <Text style={styles.pendingBannerText}>
+              Your bank transfer payment is pending confirmation. You will be notified once the payment is confirmed.
+            </Text>
+          </View>
+        )}
+
+        {/* 1.5 CAROUSEL */}
+        {carouselItems.length > 0 && (
+          <View style={styles.section}>
+            <Carousel data={carouselItems} />
+          </View>
+        )}
+
+        {/* 2. ACTIVE PLAN CARD */}
+        <View style={styles.section}>
+          {subscription ? (
+            <View style={[styles.card, styles.planCard, subscription.status === 'pending' && { backgroundColor: '#F59E0B' }]}>
+              <View style={styles.cardHeader}>
+                <View>
+                  <Text style={styles.planTitle}>{subscription.Plan?.name || 'Standard Plan'}</Text>
+                  {subscription.status === 'pending' ? (
+                      <Text style={styles.pendingText}>
+                        Payment Pending – Awaiting Admin Confirmation
+                      </Text>
+                  ) : (
+                      <Text style={styles.planExpiry}>{getDaysRemaining(subscription.end_date)}</Text>
+                  )}
                 </View>
-              ) : null}
+                <View style={[styles.planBadge, subscription.status === 'pending' && { backgroundColor: 'rgba(0,0,0,0.2)' }]}>
+                  <Text style={styles.planBadgeText}>{subscription.status.toUpperCase()}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.usageContainer}>
+                <View style={styles.usageRow}>
+                  <Text style={styles.usageLabel}>Pickups Used</Text>
+                  <Text style={styles.usageValue}>
+                    {subscription.Plan?.max_pickups - subscription.remaining_pickups} / {subscription.Plan?.max_pickups}
+                  </Text>
+                </View>
+                <View style={styles.progressBar}>
+                  <View 
+                    style={[
+                      styles.progressFill, 
+                      { width: `${((subscription.Plan?.max_pickups - subscription.remaining_pickups) / subscription.Plan?.max_pickups) * 100}%` }
+                    ]} 
+                  />
+                </View>
+
+                <View style={[styles.usageRow, { marginTop: 12 }]}>
+                  <Text style={styles.usageLabel}>Clothes Used</Text>
+                  <Text style={styles.usageValue}>
+                    {subscription.used_clothes || 0} / {subscription.Plan?.clothes_limit || '∞'}
+                  </Text>
+                </View>
+                <View style={styles.progressBar}>
+                  <View 
+                    style={[
+                      styles.progressFill, 
+                      { width: `${Math.min(((subscription.used_clothes || 0) / (subscription.Plan?.clothes_limit || 1)) * 100, 100)}%` }
+                    ]} 
+                  />
+                </View>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity style={[styles.card, styles.planCard, styles.emptyPlanCard]} onPress={() => safeNav('Plan', { user })}>
+              <View>
+                <Text style={styles.planTitle}>No Active Plan</Text>
+                <Text style={styles.planExpiry}>Subscribe to start booking pickups</Text>
+              </View>
+              <Ionicons name="chevron-forward-circle" size={32} color={THEME.white} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[
+              styles.emergencyButton,
+              (!emergencyConfig?.enabled || emergencyConfig?.available === false) && styles.emergencyButtonDisabled
+            ]}
+            onPress={handleEmergencyLaundry}
+            activeOpacity={0.9}
+            accessibilityRole="button"
+            accessibilityLabel="Emergency laundry"
+            accessibilityHint="Open emergency laundry form"
+          >
+            <View style={styles.emergencyRow}>
+              <View style={styles.emergencyIconWrap}>
+                <Ionicons name="flash" size={22} color={THEME.white} />
+              </View>
+              <View style={styles.emergencyTextWrap}>
+                <Text style={styles.emergencyTitle}>Emergency Laundry</Text>
+                <Text style={styles.emergencySubText}>
+                  {emergencyConfig?.delivery_window_text || 'Delivered within 2–8 hours (same day)'}
+                </Text>
+              </View>
             </View>
           </TouchableOpacity>
         </View>
-        {successTransfer && (
+
+        {/* 3. QUICK ACTIONS */}
+          <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionsGrid}>
+            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnPrimary]} onPress={handleBookPickup} activeOpacity={0.9}>
+              <View style={styles.actionIconWrapLight}>
+                <Ionicons name="add-circle" size={22} color={THEME.white} />
+              </View>
+              <Text style={styles.actionBtnTextLight}>Book Pickup</Text>
+              <Text style={styles.actionHintLight}>Schedule a laundry pickup</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSecondary]} onPress={handleTrackOrder} activeOpacity={0.9}>
+              <View style={styles.actionIconWrap}>
+                <Ionicons name="time" size={22} color={THEME.primary} />
+              </View>
+              <Text style={styles.actionBtnText}>Track Order</Text>
+              <Text style={styles.actionHint}>View order status</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 4. CURRENT ORDER CARD */}
+        {primaryActiveOrder && (
+          <View style={styles.section}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.sectionTitle}>Current Order</Text>
+              <TouchableOpacity onPress={() => safeNav('Orders', { user })}>
+                <Text style={styles.seeAll}>See All</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={[styles.card, styles.cardElevated]} onPress={() => safeNav('OrderDetails', { order: primaryActiveOrder })} activeOpacity={0.9}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.orderId}>Order #{primaryActiveOrder.order_id}</Text>
+                <View style={styles.rowGap}>
+                  {primaryActiveOrder.is_emergency && (
+                    <View style={styles.emergencyBadge}>
+                      <Text style={styles.emergencyBadgeText}>EMERGENCY</Text>
+                    </View>
+                  )}
+                  <StatusBadge status={primaryActiveOrder.status} />
+                </View>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.orderDetailRow}>
+                <Ionicons name="calendar-outline" size={16} color={THEME.textLight} />
+                <Text style={styles.orderDetailText}>Pickup: {new Date(primaryActiveOrder.pickup_date).toDateString()}</Text>
+              </View>
+              <View style={styles.orderDetailRow}>
+                <Ionicons name="shirt-outline" size={16} color={THEME.textLight} />
+                <Text style={styles.orderDetailText}>{primaryActiveOrder.clothes_count} Items</Text>
+              </View>
+              <View style={styles.cardFooter}>
+                <Text style={styles.viewDetails}>View Details</Text>
+                <Ionicons name="arrow-forward" size={16} color={THEME.primary} />
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+        
+        {!primaryActiveOrder && !subscription && (
+           <View style={styles.emptyStateCard}>
+             <View style={styles.emptyIcon}>
+               <Ionicons name="basket-outline" size={28} color={THEME.primary} />
+             </View>
+             <View style={styles.emptyTextWrap}>
+               <Text style={styles.emptyStateText}>Ready to do laundry?</Text>
+               <Text style={styles.emptyStateSubText}>Choose a plan to start booking pickups.</Text>
+             </View>
+             <TouchableOpacity onPress={() => safeNav('Plan', { user })} style={styles.emptyAction} activeOpacity={0.9}>
+               <Text style={styles.emptyStateLink}>Browse Plans</Text>
+               <Ionicons name="arrow-forward" size={16} color={THEME.primary} />
+             </TouchableOpacity>
+           </View>
+        )}
+        
+        {/* Extra spacing for FAB */}
+        <View style={{ height: 80 }} />
+
+      {/* 6. WHATSAPP FAB */}
+      <TouchableOpacity style={styles.fab} onPress={openWhatsApp}>
+        <Ionicons name="logo-whatsapp" size={28} color="white" />
+      </TouchableOpacity>
+
+      {/* 7. IN-APP CHAT FAB */}
+      <TouchableOpacity style={styles.chatFab} onPress={handleChat}>
+        <Ionicons name="chatbubbles" size={28} color="white" />
+      </TouchableOpacity>
+
+      <Modal
+        transparent
+        visible={emergencyModalVisible}
+        animationType="fade"
+        onRequestClose={closeEmergencyModal}
+      >
+        <View style={styles.modalBackdrop}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={closeEmergencyModal}
+            accessibilityRole="button"
+            accessibilityLabel="Close emergency contact form"
+            accessibilityHint="Dismiss the emergency contact form"
+          />
+          <Pressable
+            style={[styles.modalCard, { width: emergencyModalWidth }]}
+            onPress={() => {}}
+            accessibilityRole="dialog"
+            accessibilityViewIsModal
+            onKeyDown={(event) => {
+              if (event.nativeEvent?.key === 'Escape') closeEmergencyModal();
+            }}
+          >
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              style={styles.modalKeyboard}
+            >
+              <View style={styles.modalHeaderRow}>
+                <Text style={styles.modalTitle}>Emergency Contact</Text>
+                <TouchableOpacity onPress={closeEmergencyModal} accessibilityRole="button" accessibilityLabel="Close emergency contact form">
+                  <Ionicons name="close" size={22} color={THEME.text} />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.modalSubtitle}>Share who we should contact and how to reach them.</Text>
+              <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Name</Text>
+                  <TextInput
+                    ref={emergencyNameRef}
+                    style={[styles.input, emergencyErrors.name && emergencyTouched.name && styles.inputError]}
+                    value={emergencyForm.name}
+                    onChangeText={(value) => setEmergencyForm((prev) => ({ ...prev, name: value }))}
+                    onBlur={() => setEmergencyTouched((prev) => ({ ...prev, name: true }))}
+                    placeholder="Full name"
+                    placeholderTextColor={theme.colors.textPlaceholder}
+                    accessibilityLabel="Emergency contact name"
+                    accessibilityHint="Required"
+                  />
+                  {emergencyErrors.name && emergencyTouched.name ? (
+                    <Text style={styles.errorText} accessibilityLiveRegion="polite">{emergencyErrors.name}</Text>
+                  ) : null}
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Phone Number</Text>
+                  <TextInput
+                    style={[styles.input, emergencyErrors.phone_number && emergencyTouched.phone_number && styles.inputError]}
+                    value={emergencyForm.phone_number}
+                    onChangeText={(value) => setEmergencyForm((prev) => ({ ...prev, phone_number: value }))}
+                    onBlur={() => setEmergencyTouched((prev) => ({ ...prev, phone_number: true }))}
+                    placeholder="e.g. 08012345678"
+                    placeholderTextColor={theme.colors.textPlaceholder}
+                    keyboardType="phone-pad"
+                    accessibilityLabel="Emergency contact phone number"
+                    accessibilityHint="Required"
+                  />
+                  {emergencyErrors.phone_number && emergencyTouched.phone_number ? (
+                    <Text style={styles.errorText} accessibilityLiveRegion="polite">{emergencyErrors.phone_number}</Text>
+                  ) : null}
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Relationship</Text>
+                  <TextInput
+                    style={[styles.input, emergencyErrors.relationship && emergencyTouched.relationship && styles.inputError]}
+                    value={emergencyForm.relationship}
+                    onChangeText={(value) => setEmergencyForm((prev) => ({ ...prev, relationship: value }))}
+                    onBlur={() => setEmergencyTouched((prev) => ({ ...prev, relationship: true }))}
+                    placeholder="e.g. Parent, Guardian"
+                    placeholderTextColor={theme.colors.textPlaceholder}
+                    accessibilityLabel="Emergency contact relationship"
+                    accessibilityHint="Required"
+                  />
+                  {emergencyErrors.relationship && emergencyTouched.relationship ? (
+                    <Text style={styles.errorText} accessibilityLiveRegion="polite">{emergencyErrors.relationship}</Text>
+                  ) : null}
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Message</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea, emergencyErrors.message && emergencyTouched.message && styles.inputError]}
+                    value={emergencyForm.message}
+                    onChangeText={(value) => setEmergencyForm((prev) => ({ ...prev, message: value }))}
+                    onBlur={() => setEmergencyTouched((prev) => ({ ...prev, message: true }))}
+                    placeholder="Let us know what's urgent"
+                    placeholderTextColor={theme.colors.textPlaceholder}
+                    multiline
+                    numberOfLines={4}
+                    accessibilityLabel="Emergency message"
+                    accessibilityHint="Required"
+                  />
+                  {emergencyErrors.message && emergencyTouched.message ? (
+                    <Text style={styles.errorText} accessibilityLiveRegion="polite">{emergencyErrors.message}</Text>
+                  ) : null}
+                </View>
+                {emergencySubmitError ? (
+                  <Text style={styles.submitError} accessibilityLiveRegion="polite">{emergencySubmitError}</Text>
+                ) : null}
+                <TouchableOpacity
+                  style={[styles.submitBtn, emergencySubmitting && styles.submitBtnDisabled]}
+                  onPress={handleEmergencySubmit}
+                  disabled={emergencySubmitting}
+                  accessibilityRole="button"
+                  accessibilityLabel="Submit emergency contact form"
+                  >
+                  {emergencySubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Submit</Text>}
+                </TouchableOpacity>
+              </ScrollView>
+            </KeyboardAvoidingView>
+          </Pressable>
+        </View>
+      </Modal>
+    </PageLayout>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: THEME.bg },
+  backgroundIllustrationWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'flex-end', zIndex: 0 },
+  backgroundIllustration: { opacity: 0.16 },
+  backgroundOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, backgroundColor: 'rgba(244,247,255,0.7)' },
+  chatFab: {
+    position: 'absolute',
+    bottom: 96,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: THEME.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    zIndex: 999,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#25D366', // WhatsApp Green
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    zIndex: 999,
+  },
+  successBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ECFDF3', borderRadius: 14, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#BBF7D0' },
+  successBannerText: { flex: 1, marginLeft: 8, color: '#065F46', fontWeight: '600', fontSize: 13 },
+  pendingBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFBEB', borderRadius: 14, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: '#FDE68A' },
+  pendingBannerText: { flex: 1, marginLeft: 8, color: '#92400E', fontWeight: '600', fontSize: 13 },
+  
+  // Section
+  section: { marginBottom: 22 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: THEME.text, marginBottom: 10 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  rowGap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  seeAll: { color: THEME.primary, fontSize: 13, fontWeight: '700' },
+
+  // Cards
+  card: { backgroundColor: THEME.white, borderRadius: 18, padding: 18, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.06, shadowRadius: 18, elevation: 4, borderWidth: 1, borderColor: 'rgba(15,23,42,0.04)' },
+  cardElevated: { shadowOpacity: 0.1, shadowRadius: 22, elevation: 6 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  divider: { height: 1, backgroundColor: 'rgba(15,23,42,0.08)', marginVertical: 12 },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 12 },
+  
+  // Plan Card
+  planCard: { backgroundColor: THEME.primary, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+  emptyPlanCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  planTitle: { fontSize: 19, fontWeight: '700', color: THEME.white },
+  planExpiry: { fontSize: 12, color: '#E0F2FE', marginTop: 4 },
+  planBadge: { backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  planBadgeText: { color: THEME.white, fontSize: 10, fontWeight: '700', letterSpacing: 0.4 },
+  usageContainer: { marginTop: 16 },
+  usageRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  usageLabel: { color: '#E0F2FE', fontSize: 12, fontWeight: '600' },
+  usageValue: { color: THEME.white, fontWeight: '700', fontSize: 12 },
+  progressBar: { height: 7, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 6, overflow: 'hidden' },
+  progressFill: { height: 7, backgroundColor: THEME.white, borderRadius: 6 },
+  remainingText: { color: '#E0F2FE', fontSize: 11, marginTop: 8, textAlign: 'right' },
+  pendingText: { color: '#FFF', fontWeight: '700', marginTop: 4, fontSize: 12 },
+
+  // Quick Actions
+  actionsGrid: { flexDirection: 'row', gap: 12 },
+  actionBtn: { flex: 1, padding: 16, borderRadius: 18, alignItems: 'flex-start', justifyContent: 'center', minHeight: 110 },
+  actionBtnPrimary: { backgroundColor: THEME.secondary },
+  actionBtnSecondary: { backgroundColor: THEME.white, borderWidth: 1, borderColor: 'rgba(15,23,42,0.08)' },
+  actionIconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.04)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  actionIconWrapLight: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  actionBtnText: { fontWeight: '700', color: THEME.text, fontSize: 14 },
+  actionBtnTextLight: { fontWeight: '700', color: THEME.white, fontSize: 14 },
+  actionHint: { marginTop: 6, color: THEME.textLight, fontSize: 12 },
+  actionHintLight: { marginTop: 6, color: 'rgba(255,255,255,0.82)', fontSize: 12 },
+
+  emergencyButton: { backgroundColor: '#DC2626', borderRadius: 18, padding: 16 },
+  emergencyButtonDisabled: { opacity: 0.65 },
+  emergencyRow: { flexDirection: 'row', alignItems: 'center' },
+  emergencyIconWrap: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  emergencyTextWrap: { flex: 1 },
+  emergencyTitle: { color: THEME.white, fontWeight: '800', fontSize: 15 },
+  emergencySubText: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 4 },
+  emergencyBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: '#FEE2E2' },
+  emergencyBadgeText: { color: '#B91C1C', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+  modalCard: { backgroundColor: THEME.white, borderRadius: 20, padding: 18, maxHeight: '90%', borderWidth: 1, borderColor: 'rgba(15,23,42,0.08)' },
+  modalKeyboard: { flex: 1 },
+  modalHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: THEME.text },
+  modalSubtitle: { marginTop: 6, marginBottom: 14, color: THEME.textLight, fontSize: 13 },
+  modalContent: { paddingBottom: 8 },
+  inputGroup: { marginBottom: 12 },
+  inputLabel: { fontSize: 12, fontWeight: '700', color: THEME.text, marginBottom: 6 },
+  input: { borderWidth: 1, borderColor: 'rgba(15,23,42,0.12)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: THEME.text, backgroundColor: '#fff' },
+  textArea: { minHeight: 100, textAlignVertical: 'top' },
+  inputError: { borderColor: '#DC2626' },
+  errorText: { marginTop: 6, color: '#DC2626', fontSize: 12, fontWeight: '600' },
+  submitError: { marginBottom: 10, color: '#B91C1C', fontSize: 12, fontWeight: '600' },
+  submitBtn: { backgroundColor: THEME.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  submitBtnDisabled: { opacity: 0.7 },
+  submitBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  // Order Card
+  orderId: { fontSize: 16, fontWeight: '700', color: THEME.text },
+  orderDetailRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 8 },
+  orderDetailText: { color: THEME.textLight, fontSize: 14 },
+  viewDetails: { color: THEME.primary, fontWeight: '600', fontSize: 14, marginRight: 4 },
+  
+  // Badges
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  badgeText: { fontSize: 11, fontWeight: 'bold' },
+  
+  // Empty State
+  emptyStateCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 18, backgroundColor: THEME.white, borderWidth: 1, borderColor: 'rgba(15,23,42,0.06)', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.06, shadowRadius: 18, elevation: 4 },
+  emptyIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(59,130,246,0.12)', alignItems: 'center', justifyContent: 'center' },
+  emptyTextWrap: { flex: 1 },
+  emptyStateText: { color: THEME.text, fontWeight: '700', fontSize: 14, marginBottom: 4 },
+  emptyStateSubText: { color: THEME.textLight, fontSize: 12 },
+  emptyAction: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  emptyStateLink: { color: THEME.primary, fontWeight: '700', fontSize: 13 },
+});        {successTransfer && (
           <View style={styles.successBanner}>
             <Ionicons name="checkmark-circle-outline" size={18} color="#065F46" />
             <Text style={styles.successBannerText}>

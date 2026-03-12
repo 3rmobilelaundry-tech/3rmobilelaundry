@@ -2,9 +2,11 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, RefreshControl, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '../constants/theme';
 import { student } from '../services/api';
 import { useSync } from '../context/SyncContext';
+import PageLayout from '../components/PageLayout';
 
 const STEPS = [
   { key: 'pending', label: 'Order Created', icon: 'cart' },
@@ -20,8 +22,15 @@ export default function OrderDetailsScreen({ route }) {
   const navigation = useNavigation();
   const { order: initialOrder } = route.params || {};
   const [order, setOrder] = useState(initialOrder);
+  const [user, setUser] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const { lastEvent } = useSync();
+
+  useEffect(() => {
+    AsyncStorage.getItem('userData').then(data => {
+        if (data) setUser(JSON.parse(data));
+    });
+  }, []);
 
   const onRefresh = useCallback(async () => {
     if (!order?.user_id) return;
@@ -29,14 +38,10 @@ export default function OrderDetailsScreen({ route }) {
     setRefreshing(true);
     try {
       const response = await student.getOrders(order.user_id);
-      // Ensure we compare strings or numbers consistently
       const updatedOrder = response.data.find(o => String(o.order_id) === String(order.order_id));
       
       if (updatedOrder) {
         setOrder(updatedOrder);
-      } else {
-         // Order might have been deleted or not found?
-         // Just keep showing old data or alert?
       }
     } catch (error) {
       console.error('Refresh failed:', error);
@@ -76,9 +81,7 @@ export default function OrderDetailsScreen({ route }) {
   const currentStatusIndex = STATUS_ORDER.indexOf(order.status);
   
   const isStepActive = (stepKey) => {
-    // specific mapping for 'accepted' -> 'pending' step is visually active
     if (stepKey === 'pending' && order.status === 'accepted') return true;
-    
     const stepIndex = STATUS_ORDER.indexOf(stepKey);
     return stepIndex <= currentStatusIndex && stepIndex !== -1;
   };
@@ -124,10 +127,12 @@ export default function OrderDetailsScreen({ route }) {
   };
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      contentContainerStyle={{ paddingBottom: 40 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    <PageLayout 
+      user={user} 
+      showBack 
+      refreshing={refreshing} 
+      onRefresh={onRefresh}
+      scrollable={true}
     >
       {/* Header Status Card */}
       <View style={styles.headerCard}>
@@ -227,7 +232,7 @@ export default function OrderDetailsScreen({ route }) {
         <Ionicons name="logo-whatsapp" size={20} color="#fff" />
         <Text style={styles.helpText}>Need Help with this Order?</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </PageLayout>
   );
 }
 

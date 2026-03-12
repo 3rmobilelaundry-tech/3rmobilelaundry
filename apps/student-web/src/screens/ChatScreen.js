@@ -5,6 +5,7 @@ import io from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../services/api';
 import { theme } from '../constants/theme';
+import PageLayout from '../components/PageLayout';
 
 export default function ChatScreen({ route, navigation }) {
   const { orderId } = route.params;
@@ -15,6 +16,7 @@ export default function ChatScreen({ route, navigation }) {
   const [isOnline, setIsOnline] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [myId, setMyId] = useState(null);
+  const [user, setUser] = useState(null);
   const [offlineQueue, setOfflineQueue] = useState([]);
   const flatListRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -76,6 +78,7 @@ export default function ChatScreen({ route, navigation }) {
         const userDataStr = await AsyncStorage.getItem('userData');
         const userData = userDataStr ? JSON.parse(userDataStr) : {};
         const userId = userData.user_id;
+        setUser(userData);
         setMyId(userId);
         setConnectionStatus('connecting');
 
@@ -320,62 +323,64 @@ export default function ChatScreen({ route, navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    <PageLayout 
+      user={user} 
+      showBack 
+      title={`Order #${orderId} Support`} 
+      scrollable={false}
+      noPadding
     >
-      <View style={styles.header}>
-         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-           <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
-         </TouchableOpacity>
-         <View>
-            <Text style={styles.headerTitle}>Order #{orderId} Support</Text>
-            {connectionStatus === 'online' && <Text style={{fontSize: 12, color: theme.colors.success, fontWeight: 'bold'}}>Online</Text>}
-            {connectionStatus === 'reconnecting' && <Text style={{fontSize: 12, color: theme.colors.warning, fontWeight: 'bold'}}>Reconnecting</Text>}
-            {connectionStatus === 'offline' && <Text style={{fontSize: 12, color: theme.colors.error, fontWeight: 'bold'}}>Offline</Text>}
-         </View>
+      <View style={styles.statusHeader}>
+        {connectionStatus === 'online' && <Text style={{fontSize: 12, color: theme.colors.success, fontWeight: 'bold'}}>Online</Text>}
+        {connectionStatus === 'reconnecting' && <Text style={{fontSize: 12, color: theme.colors.warning, fontWeight: 'bold'}}>Reconnecting</Text>}
+        {connectionStatus === 'offline' && <Text style={{fontSize: 12, color: theme.colors.error, fontWeight: 'bold'}}>Offline</Text>}
       </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
-      ) : (
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id ? item.id.toString() : item.tempId ? item.tempId.toString() : Math.random().toString()}
-          contentContainerStyle={styles.listContent}
-        />
-      )}
-
-      <View style={styles.inputContainer}>
-        {chatStatus === 'locked' && (
-          <Text style={styles.lockedText}>This chat is closed because the order has been completed.</Text>
+      <KeyboardAvoidingView 
+        style={styles.container} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+          </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id ? item.id.toString() : item.tempId ? item.tempId.toString() : Math.random().toString()}
+            contentContainerStyle={styles.listContent}
+          />
         )}
-        <TextInput
-          style={styles.input}
-          value={message}
-          onChangeText={(text) => {
-            setMessage(text);
-            if (!socket || chatStatus === 'locked') return;
-            socket.emit('typing', { orderId, isTyping: true });
-            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-            typingTimeoutRef.current = setTimeout(() => {
-              socket.emit('typing', { orderId, isTyping: false });
-            }, 2000);
-          }}
-          placeholder="Type a message..."
-          onSubmitEditing={sendMessage}
-          editable={chatStatus !== 'locked'}
-        />
-        <TouchableOpacity onPress={sendMessage} style={styles.sendButton} disabled={!message.trim() || chatStatus === 'locked'}>
-          <Ionicons name="send" size={24} color={message.trim() ? theme.colors.primary : '#ccc'} />
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+
+        <View style={styles.inputContainer}>
+          {chatStatus === 'locked' && (
+            <Text style={styles.lockedText}>This chat is closed because the order has been completed.</Text>
+          )}
+          <TextInput
+            style={styles.input}
+            value={message}
+            onChangeText={(text) => {
+              setMessage(text);
+              if (!socket || chatStatus === 'locked') return;
+              socket.emit('typing', { orderId, isTyping: true });
+              if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+              typingTimeoutRef.current = setTimeout(() => {
+                socket.emit('typing', { orderId, isTyping: false });
+              }, 2000);
+            }}
+            placeholder="Type a message..."
+            onSubmitEditing={sendMessage}
+            editable={chatStatus !== 'locked'}
+          />
+          <TouchableOpacity onPress={sendMessage} style={styles.sendButton} disabled={!message.trim() || chatStatus === 'locked'}>
+            <Ionicons name="send" size={24} color={message.trim() ? theme.colors.primary : '#ccc'} />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </PageLayout>
   );
 }
 
@@ -384,23 +389,109 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  header: {
-    flexDirection: 'row',
+  statusHeader: {
+    backgroundColor: theme.colors.surface,
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 4,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.textPrimary,
   },
   loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  messageBubble: {
+    maxWidth: '80%',
+    padding: 12,
+    borderRadius: 16,
+    marginBottom: 8,
+  },
+  myMessage: {
+    alignSelf: 'flex-end',
+    backgroundColor: theme.colors.primary,
+    borderTopRightRadius: 0,
+  },
+  theirMessage: {
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: 0,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderBottomLeftRadius: 4,
+  },
+  senderName: {
+    fontSize: 10,
+    color: theme.colors.textTertiary,
+    marginBottom: 4,
+    fontWeight: 'bold',
+  },
+  messageText: {
+    fontSize: 16,
+  },
+  myMessageText: {
+    color: '#fff',
+  },
+  theirMessageText: {
+    color: theme.colors.textPrimary,
+  },
+  timestamp: {
+    fontSize: 10,
+    marginTop: 4,
+    alignSelf: 'flex-end',
+  },
+  myTimestamp: {
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  theirTimestamp: {
+    color: theme.colors.textTertiary,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+  },
+  input: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginRight: 12,
+    fontSize: 16,
+  },
+  sendButton: {
+    padding: 8,
+  },
+  systemMessageContainer: {
+    alignSelf: 'center',
+    marginVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 12,
+  },
+  systemMessageText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  lockedText: {
+      color: theme.colors.textTertiary,
+      fontStyle: 'italic',
+      textAlign: 'center',
+      width: '100%',
+      padding: 10,
+  }
+});  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',

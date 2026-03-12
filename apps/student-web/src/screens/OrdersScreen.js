@@ -7,7 +7,6 @@ import {
   FlatList, 
   TextInput, 
   ScrollView,
-  StatusBar,
   RefreshControl
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -15,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { student } from '../services/api';
 import { theme } from '../constants/theme';
 import { useSync } from '../context/SyncContext';
+import PageLayout from '../components/PageLayout';
 
 const TABS = [
   { id: 'all', label: 'All' },
@@ -36,10 +36,7 @@ export default function OrdersScreen({ route, navigation }) {
   // Safety check for user session
   useEffect(() => {
     if (!user) {
-      // If we somehow got here without a user, redirect to Login
-      // This is a fallback; App.js should prevent this.
       setLoading(false);
-      // Optional: Navigation redirect if needed, but let's just show empty for now to avoid loops
     }
   }, [user]);
 
@@ -205,58 +202,65 @@ export default function OrdersScreen({ route, navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
-      {/* Header Title */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Orders</Text>
-      </View>
-
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search-outline" size={20} color="#9CA3AF" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by code..."
-            placeholderTextColor="#9CA3AF"
-            value={searchText}
-            onChangeText={setSearchText}
-          />
+    <PageLayout 
+      user={user} 
+      loading={loading}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      scrollable={false}
+      noPadding
+    >
+      <View style={styles.fixedContent}>
+        {/* Header Title */}
+        <View style={styles.header}>
+            <Text style={styles.headerTitle}>My Orders</Text>
         </View>
-      </View>
 
-      {/* Scrollable Tabs */}
-      <View style={styles.tabsContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabsContent}
-        >
-          {TABS.map(tab => {
-            const isActive = activeTab === tab.id;
-            const count = getTabCount(tab.id);
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                style={[styles.tab, isActive && styles.tabActive]}
-                onPress={() => setActiveTab(tab.id)}
-              >
-                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                  {tab.label}
-                </Text>
-                {count > 0 && (
-                  <View style={[styles.tabBadge, isActive ? styles.tabBadgeActive : styles.tabBadgeInactive]}>
-                    <Text style={[styles.tabBadgeText, isActive ? styles.tabBadgeTextActive : styles.tabBadgeTextInactive]}>
-                      {count}
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+            <View style={styles.searchBar}>
+            <Ionicons name="search-outline" size={20} color="#9CA3AF" style={styles.searchIcon} />
+            <TextInput
+                style={styles.searchInput}
+                placeholder="Search by code..."
+                placeholderTextColor="#9CA3AF"
+                value={searchText}
+                onChangeText={setSearchText}
+            />
+            </View>
+        </View>
+
+        {/* Scrollable Tabs */}
+        <View style={styles.tabsContainer}>
+            <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabsContent}
+            >
+            {TABS.map(tab => {
+                const isActive = activeTab === tab.id;
+                const count = getTabCount(tab.id);
+                return (
+                <TouchableOpacity
+                    key={tab.id}
+                    style={[styles.tab, isActive && styles.tabActive]}
+                    onPress={() => setActiveTab(tab.id)}
+                >
+                    <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                    {tab.label}
                     </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+                    {count > 0 && (
+                    <View style={[styles.tabBadge, isActive ? styles.tabBadgeActive : styles.tabBadgeInactive]}>
+                        <Text style={[styles.tabBadgeText, isActive ? styles.tabBadgeTextActive : styles.tabBadgeTextInactive]}>
+                        {count}
+                        </Text>
+                    </View>
+                    )}
+                </TouchableOpacity>
+                );
+            })}
+            </ScrollView>
+        </View>
       </View>
 
       {/* Orders List */}
@@ -274,18 +278,18 @@ export default function OrdersScreen({ route, navigation }) {
           )
         }
       />
-    </View>
+    </PageLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff', // Or slightly off-white if needed, but design looks white/clean
+  fixedContent: {
+    backgroundColor: '#fff',
+    paddingBottom: 8,
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 20, // Adjust for status bar if needed
+    paddingTop: 12,
     paddingBottom: 10,
     backgroundColor: '#fff',
   },
