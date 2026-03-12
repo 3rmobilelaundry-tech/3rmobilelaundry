@@ -16,16 +16,21 @@ export default function LoginScreen({ navigation }) {
   }, []);
 
   const routeByRole = (user) => {
-    if (user.role === 'head_admin') {
-      navigation.replace('HeadAdmin', { user, initialTab: 'Overview' });
-    } else if (user.role === 'receptionist') {
-      navigation.replace('ReceptionistScreen', { user });
-    } else if (user.role === 'washer') {
-      navigation.replace('WasherScreen', { user });
-    } else if (user.role === 'rider') {
-      navigation.replace('RiderScreen', { user });
-    } else {
-      navigation.replace('Dashboard', { user });
+    switch (user.role) {
+      case 'head_admin':
+        navigation.replace('HeadAdmin', { user, initialTab: 'Overview' });
+        break;
+      case 'receptionist':
+        navigation.replace('ReceptionistScreen', { user });
+        break;
+      case 'washer':
+        navigation.replace('WasherScreen', { user });
+        break;
+      case 'rider':
+        navigation.replace('RiderScreen', { user });
+        break;
+      default:
+        navigation.replace('Dashboard', { user });
     }
   };
 

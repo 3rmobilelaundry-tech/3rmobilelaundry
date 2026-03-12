@@ -254,12 +254,21 @@ const ensureSeedAdmin = async () => {
   const phone = '08069090488';
 
   let admin = await User.findOne({ where: { email } });
-  if (admin) return; // Already exists
+  if (admin) {
+      // Check if phone number is different, if so, update it to match requirements
+      if (admin.phone_number !== phone) {
+          console.log('Updating Head Admin phone number...');
+          admin.phone_number = phone;
+          await admin.save();
+      }
+      return; 
+  }
 
   // Check if phone exists to avoid unique constraint error
   const phoneExists = await User.findOne({ where: { phone_number: phone } });
   if (phoneExists) {
-      console.warn('Head Admin creation skipped: Phone number already in use, but email not found.');
+      console.warn('Head Admin creation skipped: Phone number already in use by another account.');
+      // Optional: Logic to upgrade existing user to head_admin if needed
       return;
   }
 
