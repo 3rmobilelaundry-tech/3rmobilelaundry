@@ -205,6 +205,16 @@ export const SyncProvider = ({ children }) => {
             setLastEvent({ type: 'settings_updated', payload });
           } catch (err) { console.error(err); }
         });
+
+        eventSource.addEventListener('notification', (e) => {
+          try {
+            const notification = JSON.parse(e.data);
+            if (userData && notification.user_id === userData.user_id) {
+              console.log('SyncContext: Notification received', notification);
+              setLastEvent({ type: 'notification', payload: notification });
+            }
+          } catch (err) { console.error(err); }
+        });
       } else {
         // Fallback: Polling for Native if EventSource missing
         console.log('SyncContext: EventSource not found, using Polling fallback');

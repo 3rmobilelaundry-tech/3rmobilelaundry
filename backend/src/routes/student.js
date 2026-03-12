@@ -394,7 +394,7 @@ router.get('/events', async (req, res) => {
         return res.status(403).json({ error: 'Unauthorized' });
     }
     // Connected
-    sse.addClient(res);
+    sse.addClient(res, user.user_id);
   } catch (e) {
     console.error('SSE Error:', e);
     res.status(401).json({ error: 'Invalid token', details: e.message });
@@ -1082,7 +1082,19 @@ router.post('/emergency', async (req, res) => {
       transaction: t
     });
     await t.commit();
+    
+    // Notify User
+    const emergencyNotification = await Notification.create({
+      user_id: authUserId,
+      title: 'Emergency Order Created',
+      message: `Your emergency order #${order.order_id} has been created.`,
+      event_type: 'order_update',
+      channel: 'app'
+    });
+    
     sse.broadcast('order_created', order);
+    sse.broadcast('notification', emergencyNotification, authUserId);
+    try { await IntegrationService.sendPushNotification(authUserId, emergencyNotification.title, emergencyNotification.message); } catch (e) { console.warn('Push failed:', e.message); }
     emitPickupSync(req, 'created', order, { status: order.status });
     const baseMeta = {
       userName: user ? (user.full_name || user.email || `User ${user.user_id}`) : `User ${authUserId}`,
@@ -1383,7 +1395,18 @@ router.post('/book', async (req, res) => {
     await t.commit();
     console.log('Student order committed', { order_id: order.order_id, user_id });
 
+    // Create User Notification
+    const userNotification = await Notification.create({
+      user_id: user_id,
+      title: 'Order Placed Successfully',
+      message: `Your order #${order.order_id} has been placed successfully.`,
+      event_type: 'order_update',
+      channel: 'app'
+    });
+
     sse.broadcast('order_created', order);
+    sse.broadcast('notification', userNotification, user_id);
+    try { await IntegrationService.sendPushNotification(user_id, userNotification.title, userNotification.message); } catch (e) { console.warn('Push failed:', e.message); }
     emitPickupSync(req, 'created', order, { status: order.status });
     if (extraAmount > 0) {
         // Find the payment we just created? Or just broadcast a generic 'payment_created' event
@@ -1554,10 +1577,11 @@ router.post('/orders/:id/cancel', async (req, res) => {
       details: `Cancelled from ${previousStatus}`
     }, { transaction: t });
 
-    await Notification.create({
+    const cancelNotification = await Notification.create({
       user_id: order.user_id,
       title: 'Order Cancelled',
       message: 'Your order has been cancelled.',
+      event_type: 'order_update',
       channel: 'app'
     }, { transaction: t });
 
@@ -1579,6 +1603,8 @@ router.post('/orders/:id/cancel', async (req, res) => {
 
     await t.commit();
     sse.broadcast('order_updated', order);
+    sse.broadcast('notification', cancelNotification, order.user_id);
+    try { await IntegrationService.sendPushNotification(order.user_id, cancelNotification.title, cancelNotification.message); } catch (e) { console.warn('Push failed:', e.message); }
     emitPickupSync(req, 'status_update', order, { from: previousStatus, to: 'cancelled' });
     res.json(order);
   } catch (error) {

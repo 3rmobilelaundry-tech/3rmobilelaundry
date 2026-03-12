@@ -66,13 +66,24 @@ const buildStaffEmail = (title, message, meta = {}) => {
 };
 const notifyUserInApp = async (userId, title, message, eventType = 'system') => {
   if (!userId) return null;
-  return Notification.create({
+  const notification = await Notification.create({
     user_id: userId,
     title,
     message,
     event_type: eventType,
     channel: 'app'
   });
+  // Broadcast real-time event
+  sse.broadcast('notification', notification, userId);
+  
+  // Try Push Notification
+  try {
+    await IntegrationService.sendPushNotification(userId, title, message);
+  } catch (e) {
+    console.warn('Push notification failed:', e.message);
+  }
+
+  return notification;
 };
 const notifyAdmins = async ({ title, message, subject, text, action, meta, actorUserId }) => {
   const admins = await User.findAll({ where: { role: 'admin' } });
@@ -435,6 +446,9 @@ router.post('/login', async (req, res) => {
           actorUserId: user.user_id
         });
       }
+    } else {
+        // Notify regular users (students)
+        await notifyUserInApp(user.user_id, 'Login Successful', `Welcome back, ${user.full_name || 'User'}!`, 'system');
     }
 
     const token = jwt.sign({ user_id: user.user_id, role: user.role, token_version: user.token_version || 0 }, process.env.JWT_SECRET || 'secret', { expiresIn: '24h' });

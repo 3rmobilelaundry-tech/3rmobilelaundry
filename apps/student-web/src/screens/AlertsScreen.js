@@ -39,7 +39,7 @@ export default function AlertsScreen({ route }) {
 
   // Real-time Sync
   useEffect(() => {
-    if (lastEvent && (lastEvent.type === 'order_updated' || lastEvent.type === 'order_created' || lastEvent.type === 'poll_refresh')) {
+    if (lastEvent && (lastEvent.type === 'order_updated' || lastEvent.type === 'order_created' || lastEvent.type === 'poll_refresh' || lastEvent.type === 'notification')) {
         console.log('AlertsScreen: Sync event, refreshing...');
         fetchNotifications();
     }
