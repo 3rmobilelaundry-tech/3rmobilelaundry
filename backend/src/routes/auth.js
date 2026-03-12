@@ -177,11 +177,17 @@ router.post('/register', async (req, res) => {
         email_verification_expires_at: expiresAt,
         email_verification_sent_at: new Date()
       });
-      await IntegrationService.sendEmail(
-        user.email,
-        'Verify your email',
-        `Your verification code is ${otp}. It expires in 10 minutes.`
-      );
+      try {
+        await IntegrationService.sendEmail(
+          user.email,
+          'Verify your email',
+          `Your verification code is ${otp}. It expires in 10 minutes.`,
+          `<p>Your verification code is <strong>${otp}</strong>. It expires in 10 minutes.</p>`
+        );
+      } catch (emailError) {
+        console.error('Failed to send verification email:', emailError.message);
+        // Don't fail registration, user can request resend later
+      }
     }
     const tokenPayload = { user_id: user.user_id, role: user.role, token_version: user.token_version || 0 };
     const token = !needsEmailVerification
