@@ -19,6 +19,7 @@ if (Platform.OS !== 'web') {
 }
 import LoginScreen from './src/screens/LoginScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
+import VerifyEmailScreen from './src/screens/VerifyEmailScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import BookPickupScreen from './src/screens/BookPickupScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -107,6 +108,7 @@ function AuthStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Login">
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="SignUp" component={SignUpScreen} />
+      <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
     </Stack.Navigator>
   );
 }

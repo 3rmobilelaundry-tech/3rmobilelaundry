@@ -495,7 +495,13 @@ export default function SignUpScreen({ navigation }) {
         payload.profile_fields = profilePayload;
       }
       const response = await auth.register(payload);
-      const { token, user } = response.data;
+      const { token, user, verification_required } = response.data;
+      
+      if (verification_required) {
+          navigation.navigate('VerifyEmail', { email: user.email });
+          return;
+      }
+
       let authenticated = false;
       let authError = null;
 
