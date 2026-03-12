@@ -990,66 +990,32 @@ router.post('/integrations/test/paystack', async (req, res) => {
 router.post('/integrations/test/email', async (req, res) => {
     try {
         if (!['admin', 'head_admin'].includes(req.user.role)) return res.status(403).json({ error: 'Admin only' });
-        const payload = req.body || {};
-        const current = readSettings();
-        const base = current.integrations?.email || {};
-        const merged = { ...base, ...payload };
         
-        const host = String(merged.smtp_host || '').toLowerCase();
-        const pass = String(merged.smtp_pass || '');
-        const warnings = [];
-
-        // Pre-check for Gmail specific requirements
-        if (host.includes('gmail')) {
-            const stripped = pass.replace(/\s/g, '');
-            // Gmail App Passwords are 16 chars. Regular passwords are usually different.
-            // If it's the exact length of a normal password, we can't be sure, but we can warn if it looks like a normal password (e.g. < 16 chars or > 16 chars without spaces, though app passwords are fixed 16).
-            if (stripped.length !== 16) {
-                warnings.push('Gmail requires a 16-character App Password (not your login password). Enable 2FA and generate one at myaccount.google.com/apppasswords.');
-            }
-        }
-
         try {
-            const result = await IntegrationService.verifyEmailConfig(merged);
+            // Verify configuration (basically checks if API key exists)
+            const configResult = await IntegrationService.verifyEmailConfig();
             
-            // Send a test email to verify actual sending capability
+            // Send a test email
+            const testRecipient = '3rmobilelaundry@gmail.com';
             try {
                 await IntegrationService.sendEmail(
-                    merged.smtp_user || result.user, 
-                    'SMTP Connection Test', 
-                    'This email confirms that your SMTP configuration is working correctly.',
-                    '<p>This email confirms that your SMTP configuration is working correctly.</p>'
+                    testRecipient, 
+                    'Resend API Test', 
+                    'This email confirms that your Resend email service is working correctly.',
+                    '<p>This email confirms that your <strong>Resend</strong> email service is working correctly.</p>'
                 );
             } catch (sendError) {
-                throw new Error(`Connection successful, but failed to send test email: ${sendError.message}`);
+                throw new Error(`Failed to send test email via Resend: ${sendError.message}`);
             }
 
-            const mode = result.secure ? 'SSL' : result.requireTLS ? 'STARTTLS' : 'PLAIN';
-            let message = `Email SMTP connection verified (${mode} on port ${result.port}). Test email sent to ${result.user}.`;
-            if (warnings.length > 0) {
-                message += `\n\nWarnings: ${warnings.join(' ')}`;
-            }
-            res.json({ status: 'success', message, warnings, details: result });
-        } catch (verifyError) {
-            let errorMessage = verifyError.message;
-            
-            // Enhance error message based on code
-            if (verifyError.code === 'EAUTH') {
-                errorMessage = 'Authentication failed. Check username/password.';
-                if (host.includes('gmail')) {
-                    errorMessage += ' For Gmail, you MUST use an App Password.';
-                }
-            } else if (verifyError.code === 'ESOCKET') {
-                errorMessage = 'Connection failed (Socket Error). Check host/port and SSL settings.';
-            } else if (verifyError.code === 'ETIMEDOUT') {
-                errorMessage = 'Connection timed out. Check firewall or port blocking.';
-            }
+            res.json({ 
+                status: 'success', 
+                message: `Resend Email Service verified. Test email sent to ${testRecipient}.`,
+                details: configResult 
+            });
 
-            if (warnings.length > 0) {
-                errorMessage += ` Hint: ${warnings.join(' ')}`;
-            }
-            
-            res.status(400).json({ error: errorMessage, original_error: verifyError.message });
+        } catch (error) {
+            res.status(400).json({ error: error.message });
         }
     } catch (e) {
         res.status(500).json({ error: e.message });

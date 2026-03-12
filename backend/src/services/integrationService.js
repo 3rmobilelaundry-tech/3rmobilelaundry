@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const nodemailer = require('nodemailer');
 const { Notification, User } = require('../models');
+const emailService = require('./emailService');
 
 const SETTINGS_PATH = path.join(__dirname, '..', 'config', 'app-settings.json');
 const API_LOG_PATH = path.join(__dirname, '..', 'logs', 'api-errors.log');
@@ -23,9 +23,7 @@ function logApiError(scope, error, meta = {}) {
   try {
     const dir = path.dirname(API_LOG_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    const safeMeta = { ...meta };
-    if (safeMeta.smtp_pass) safeMeta.smtp_pass = '***';
-    const line = `[${new Date().toISOString()}] ${scope} ${error?.message || error}\n${JSON.stringify(safeMeta)}\n\n`;
+    const line = `[${new Date().toISOString()}] ${scope} ${error?.message || error}\n${JSON.stringify(meta)}\n\n`;
     fs.appendFileSync(API_LOG_PATH, line, 'utf-8');
   } catch (e) {
     console.error('Failed to write api log:', e);
@@ -49,46 +47,6 @@ async function notifyAdmins(title, message) {
   } catch (e) {
     console.error('Failed to notify admins:', e);
   }
-}
-
-function resolveEmailConfig(override = {}) {
-  const settings = readSettings();
-  const base = settings.integrations?.email || {};
-  const merged = { ...base, ...override };
-  const host = merged.smtp_host || process.env.SMTP_HOST;
-  const port = Number(merged.smtp_port || process.env.SMTP_PORT || 587);
-  const user = merged.smtp_user || process.env.SMTP_USER;
-  const pass = merged.smtp_pass || process.env.SMTP_PASS;
-  const from = merged.smtp_from || merged.from || user;
-  const enabled = merged.enabled !== false;
-  return { enabled, host, port, user, pass, from };
-}
-
-function buildTransportOptions(config) {
-  if (!config.host || !config.port || !config.user || !config.pass) {
-    throw new Error('Email SMTP settings are incomplete');
-  }
-  const port = Number(config.port);
-  const secure = port === 465;
-  const requireTLS = port === 587;
-  
-  // Gmail App Passwords often contain spaces, but SMTP might need them removed.
-  // Nodemailer usually handles this, but let's be safe for Gmail.
-  let pass = config.pass;
-  if (config.host && config.host.includes('gmail')) {
-      pass = pass.replace(/\s/g, '');
-  }
-
-  return {
-    host: config.host,
-    port,
-    secure,
-    requireTLS,
-    auth: { user: config.user, pass: pass },
-    connectionTimeout: 30000, // Increased to 30s
-    greetingTimeout: 30000,   // Increased to 30s
-    socketTimeout: 30000      // Increased to 30s
-  };
 }
 
 async function withRetry(operation, name, maxRetries = 3) {
@@ -135,9 +93,6 @@ const IntegrationService = {
         throw new Error('Invalid Secret Key format');
     }
 
-    // Call Paystack API to verify (e.g. list banks or just check balance/connection)
-    // Using /transaction/verify/fake_ref to check auth is valid? No, that might 404.
-    // Use /bank (List Banks) as a lightweight authenticated call.
     try {
         const response = await axios.get('https://api.paystack.co/bank?perPage=1', {
             headers: { Authorization: `Bearer ${secretKey}` }
@@ -207,81 +162,39 @@ const IntegrationService = {
 
     return withRetry(async () => {
       console.log(`[WhatsApp] Sending to ${phone}: ${message}`);
-      
-      // Simulate sporadic failure for testing if needed, or assume success
-      // In real implementation: 
-      // const res = await fetch(...)
-      // if (!res.ok) throw new Error(res.statusText);
-      
       return true;
     }, 'WhatsApp');
   },
 
   async sendEmail(to, subject, body, html = null) {
-    const emailConfig = readSettings().integrations?.email;
-    if (!emailConfig || !emailConfig.enabled) {
-      console.log('Email integration disabled');
-      return false;
-    }
-    const resolved = resolveEmailConfig(emailConfig);
-    const transportOptions = buildTransportOptions(resolved);
     try {
+      // Use Resend service
+      // If html is not provided, wrap body in simple p tag or use text
+      const content = html || `<p>${body}</p>`;
       return await withRetry(async () => {
-        const transport = nodemailer.createTransport(transportOptions);
-        return transport.sendMail({
-          from: resolved.from,
-          to,
-          subject,
-          text: body,
-          html: html || undefined
-        });
+        return await emailService.sendEmail(to, subject, content);
       }, 'Email');
     } catch (e) {
       logApiError('Email', e, {
-        host: resolved.host,
-        port: resolved.port,
-        user: resolved.user,
-        from: resolved.from,
-        secure: transportOptions.secure,
-        requireTLS: transportOptions.requireTLS
+        to,
+        subject
       });
       throw e;
     }
   },
 
   async verifyEmailConfig(override = {}) {
-    const resolved = resolveEmailConfig(override);
-    const transportOptions = buildTransportOptions(resolved);
-    try {
-      const transport = nodemailer.createTransport(transportOptions);
-      await transport.verify();
-      return {
-        host: resolved.host,
-        port: Number(resolved.port),
-        user: resolved.user,
-        from: resolved.from,
-        secure: transportOptions.secure,
-        requireTLS: transportOptions.requireTLS
-      };
-    } catch (e) {
-      logApiError('EmailVerify', e, {
-        host: resolved.host,
-        port: resolved.port,
-        user: resolved.user,
-        from: resolved.from,
-        secure: transportOptions.secure,
-        requireTLS: transportOptions.requireTLS,
-        errorCode: e.code,
-        errorMessage: e.message
-      });
-      throw e;
+    // Check if Resend API key is present
+    if (!process.env.RESEND_API_KEY) {
+        throw new Error('RESEND_API_KEY is missing');
     }
+    return {
+        provider: 'Resend',
+        enabled: true
+    };
   },
 
   async sendPushNotification(userId, title, message) {
-    // Placeholder for Push Notification Service (e.g., Expo, Firebase)
-    // Since we don't have push tokens stored yet, we just log this action.
-    // In a real implementation, we would fetch the user's push token and send via Expo API.
     console.log(`[Push Notification] To User ${userId}: ${title} - ${message}`);
     return true;
   }
