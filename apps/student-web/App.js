@@ -81,7 +81,27 @@ function MainTabs({ route }) {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.secondary,
         tabBarInactiveTintColor: theme.colors.textTertiary,
-        tabBarStyle: { height: 60, paddingBottom: 8, backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border },
+        tabBarStyle: { 
+          height: 60, 
+          paddingBottom: 8, 
+          borderTopColor: theme.colors.border,
+          ...Platform.select({
+            web: {
+              backgroundColor: 'rgba(255,255,255,0.9)',
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 9999,
+              backdropFilter: 'blur(10px)',
+            },
+            default: {
+              backgroundColor: theme.colors.surface,
+              elevation: 8,
+              borderTopWidth: 0.5,
+            }
+          })
+        },
         tabBarIcon: ({ color, size }) => {
           const map = {
             Home: 'home',
