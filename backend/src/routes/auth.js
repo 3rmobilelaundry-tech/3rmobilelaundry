@@ -9,6 +9,7 @@ const { verifyToken } = require('../middleware/auth');
 const sse = require('../services/sse');
 const { queueLoginEmail, queueEmailNotification } = require('../services/syncService');
 const IntegrationService = require('../services/integrationService');
+const { sendEmail } = require('../services/emailService');
 const { createSyncEvent } = require('../services/syncService');
 
 const normalizeNigerianPhone = (value) => {
@@ -172,23 +173,30 @@ router.post('/register', async (req, res) => {
       const otp = generateOtp();
       const otpHash = await bcrypt.hash(otp, 10);
       const expiresAt = otpExpiresAt();
+      
+      // Save verification code (OTP) to user
       await user.update({
         email_verification_otp_hash: otpHash,
         email_verification_expires_at: expiresAt,
         email_verification_sent_at: new Date()
       });
+
       try {
-        await IntegrationService.sendEmail(
+        // Send verification email using Resend service
+        await sendEmail(
           user.email,
-          'Verify your email',
-          `Your verification code is ${otp}. It expires in 10 minutes.`,
-          `<p>Your verification code is <strong>${otp}</strong>. It expires in 10 minutes.</p>`
+          'Email Verification Code',
+          `<h2>Your verification code</h2>
+           <p>Your code is: <b>${otp}</b></p>
+           <p>This code will expire in 10 minutes.</p>`
         );
+        console.log(`Verification email sent to ${user.email}`);
       } catch (emailError) {
-        console.error('Failed to send verification email:', emailError.message);
+        console.error('Verification email failed:', emailError);
         // Don't fail registration, user can request resend later
       }
     }
+    
     const tokenPayload = { user_id: user.user_id, role: user.role, token_version: user.token_version || 0 };
     const token = !needsEmailVerification
       ? jwt.sign(tokenPayload, process.env.JWT_SECRET || 'secret', { expiresIn: '24h' })
@@ -196,7 +204,13 @@ router.post('/register', async (req, res) => {
 
     sse.broadcast('user_registered', user);
 
-    res.status(201).json({ message: 'User created successfully', token, user, verification_required: needsEmailVerification });
+    res.status(201).json({ 
+        success: true,
+        message: 'Verification code sent to your email', 
+        token, 
+        user, 
+        verification_required: needsEmailVerification 
+    });
   } catch (error) {
     console.error('Register error:', error?.message || error);
     res.status(500).json({ error: 'Server error', code: 'server_error' });
