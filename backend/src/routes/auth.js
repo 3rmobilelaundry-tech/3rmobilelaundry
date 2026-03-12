@@ -170,10 +170,12 @@ router.post('/register', async (req, res) => {
     });
 
     if (needsEmailVerification) {
+      console.log("Generating verification code...");
       const otp = generateOtp();
       const otpHash = await bcrypt.hash(otp, 10);
       const expiresAt = otpExpiresAt();
       
+      console.log("Saving verification code...");
       // Save verification code (OTP) to user
       await user.update({
         email_verification_otp_hash: otpHash,
@@ -182,13 +184,15 @@ router.post('/register', async (req, res) => {
       });
 
       try {
+        console.log("Sending verification email...");
         // Send verification email using Resend service
         await sendEmail(
           user.email,
-          'Email Verification Code',
-          `<h2>Your verification code</h2>
-           <p>Your code is: <b>${otp}</b></p>
-           <p>This code will expire in 10 minutes.</p>`
+          'Verify Your Email - 3R Mobile Laundry',
+          `<h2>Email Verification</h2>
+           <p>Your verification code is:</p>
+           <h1>${otp}</h1>
+           <p>This code expires in 10 minutes.</p>`
         );
         console.log(`Verification email sent to ${user.email}`);
       } catch (emailError) {
@@ -556,13 +560,18 @@ router.post('/email-verification/resend', async (req, res) => {
       email_verification_expires_at: expiresAt,
       email_verification_sent_at: new Date()
     });
-    await IntegrationService.sendEmail(
+    console.log(`Sending verification email to ${user.email}...`);
+    await sendEmail(
       user.email,
-      'Verify your email',
-      `Your verification code is ${otp}. It expires in 10 minutes.`
+      'Verify Your Email - 3R Mobile Laundry',
+      `<h2>Email Verification</h2>
+       <p>Your verification code is:</p>
+       <h1>${otp}</h1>
+       <p>This code expires in 10 minutes.</p>`
     );
-    res.json({ message: 'Verification code sent', cooldown_seconds: 60 });
+    res.json({ success: true, message: 'Verification code sent', cooldown_seconds: 60 });
   } catch (error) {
+    console.error('Resend verification code error:', error);
     res.status(500).json({ error: 'Server error', code: 'server_error' });
   }
 });
@@ -585,12 +594,15 @@ router.post('/email-verification/verify', async (req, res) => {
     if (!validOtp) {
       return res.status(400).json({ error: 'Invalid verification code', code: 'otp_invalid' });
     }
+    
+    console.log(`Verifying user ${user.email}...`);
     await user.update({
       email_verified: true,
       email_verified_at: new Date(),
       email_verification_otp_hash: null,
       email_verification_expires_at: null
     });
+    
     await AuditLog.create({
       actor_user_id: user.user_id,
       action: 'email_verified',
@@ -598,19 +610,13 @@ router.post('/email-verification/verify', async (req, res) => {
       entity_id: String(user.user_id),
       details: 'Email verified by user'
     });
-    await createSyncEvent({
-      actor_user_id: user.user_id,
-      target_user_id: user.user_id,
-      source: 'student',
-      entity_type: 'profile',
-      entity_id: user.user_id,
-      action: 'email_verified',
-      payload: { email_verified: true },
-      critical: true
-    });
-    sse.broadcast('user_updated', user);
-    res.json({ message: 'Email verified', user });
+    
+    // Create token for auto-login after verification if needed
+    const token = jwt.sign({ user_id: user.user_id, role: user.role, token_version: user.token_version || 0 }, process.env.JWT_SECRET || 'secret', { expiresIn: '24h' });
+
+    res.json({ success: true, message: 'Email verified successfully', user, token });
   } catch (error) {
+    console.error('Verification error:', error);
     res.status(500).json({ error: 'Server error', code: 'server_error' });
   }
 });
