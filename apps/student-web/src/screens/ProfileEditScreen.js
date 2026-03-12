@@ -223,47 +223,49 @@ export default function ProfileEditScreen({ route, navigation }) {
 
   const triggerFilePicker = async () => {
     if (Platform.OS === 'web') {
-      if (fileInputRef.current) fileInputRef.current.click();
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''; // Reset to allow re-selecting same file
+        fileInputRef.current.click();
+      }
     } else {
       // Mobile implementation
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (permissionResult.granted === false) {
-        Alert.alert('Permission Required', 'Permission to access camera roll is required!');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled) {
-        const asset = result.assets[0];
-        const localUri = asset.uri;
-        const extension = localUri.split('.').pop()?.toLowerCase();
-        const validExtensions = ['jpg', 'jpeg', 'png', 'gif'];
-        // Note: Some URIs on mobile don't have extensions, so we trust the picker unless clearly wrong
-        if (extension && !validExtensions.includes(extension) && extension.length < 5) {
-           // Basic check, but rely on picker mostly
-        }
+      try {
+        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
         
-        if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
-          Alert.alert('File Too Large', 'Maximum size is 5MB.');
+        if (permissionResult.granted === false) {
+          Alert.alert('Permission Required', 'Permission to access camera roll is required!');
           return;
         }
-        setAvatarPreview(asset.uri);
-        
-        // Create a file-like object for FormData
-        const filename = localUri.split('/').pop();
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-        
-        // Store properly for mobile upload
-        setSelectedFile({ uri: localUri, name: filename, type });
-        setUploadProgress(0);
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+
+        if (!result.canceled) {
+          const asset = result.assets[0];
+          const localUri = asset.uri;
+          
+          if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+            Alert.alert('File Too Large', 'Maximum size is 5MB.');
+            return;
+          }
+          setAvatarPreview(asset.uri);
+          
+          // Create a file-like object for FormData
+          const filename = localUri.split('/').pop();
+          const match = /\.(\w+)$/.exec(filename);
+          const type = match ? `image/${match[1]}` : 'image/jpeg';
+          
+          // Store properly for mobile upload
+          setSelectedFile({ uri: localUri, name: filename, type });
+          setUploadProgress(0);
+        }
+      } catch (e) {
+        console.error('Picker error:', e);
+        Alert.alert('Error', 'Failed to open image picker.');
       }
     }
   };
