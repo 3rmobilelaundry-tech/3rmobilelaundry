@@ -3,7 +3,7 @@ const path = require('path');
 const { SyncEvent, AuditLog, Notification, User, Subscription, Payment, Order, InventoryItem, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const sse = require('./sse');
-const IntegrationService = require('./integrationService');
+const { sendEmail } = require('./emailService');
 
 const MAX_RETRIES = 5;
 const SETTINGS_PATH = path.join(__dirname, '..', 'config', 'app-settings.json');
@@ -349,7 +349,9 @@ async function processSingleEvent(syncEvent) {
   try {
     if (syncEvent.entity_type === 'email_notification') {
       const payload = syncEvent.payload || {};
-      await IntegrationService.sendEmail(payload.to, payload.subject, payload.text || '', payload.html || null);
+      // Use Resend directly
+      await sendEmail(payload.to, payload.subject, payload.html || `<p>${payload.text}</p>`);
+      
       await sequelize.transaction(async (t) => {
         await SyncEvent.update({
           status: 'sent',
@@ -395,6 +397,7 @@ async function processSingleEvent(syncEvent) {
       });
     }
   } catch (e) {
+    console.error(`SyncEvent failed (ID: ${syncEvent.event_id}):`, e);
     const nextRetryAt = nextAttempt >= MAX_RETRIES ? null : computeNextRetry(nextAttempt);
     await SyncEvent.update({
       status: 'failed',

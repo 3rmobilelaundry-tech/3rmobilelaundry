@@ -1383,205 +1383,67 @@ router.put('/orders/:id/status', async (req, res) => {
         }, { transaction: t });
         
         // Notify user
-        if (['accepted', 'ready', 'picked_up', 'delivered'].includes(status)) {
-            const title = status === 'accepted' ? 'Order Accepted' : 'Order Update';
-            const message = status === 'accepted' ? 'Your order has been accepted!' : `Your order is now ${status}`;
-            await Notification.create({ user_id: order.user_id, title, message, channel: 'app' }, { transaction: t });
-        }
-
-        if (actor && isStaffRole(actor.role)) {
-          await notifyUserInApp(actor.user_id, 'Order updated', `You updated order ${order.order_id} to ${status}.`, 'order_update', t);
-          staffEmailQueue.push({
-            user: actor,
-            title: 'Order updated',
-            message: `You updated order ${order.order_id} to ${status}.`,
-            action: 'order_update_actor',
-            meta: { status }
-          });
-        }
-
-        if (status === 'accepted') {
-          if (order.assigned_rider_id) {
-            const rider = await User.findByPk(order.assigned_rider_id, { transaction: t });
-            if (rider) {
-              await notifyUserInApp(rider.user_id, 'Order assigned', `Order ${order.order_id} has been assigned to you for pickup.`, 'order_update', t);
-              staffEmailQueue.push({
-                user: rider,
-                title: 'Order assigned',
-                message: `Order ${order.order_id} has been assigned to you for pickup.`,
-                action: 'order_assigned',
-                meta: { status }
-              });
-            }
-          }
-          await notifyAdmins({
-            title: 'Order accepted',
-            message: `Order ${order.order_id} accepted.`,
-            action: 'order_accepted',
-            meta: { status },
-            actorUserId: req.user.user_id,
-            transaction: t,
-            skipEmail: true
-          });
-          adminEmailQueue.push({
-            title: 'Order accepted',
-            message: `Order ${order.order_id} accepted.`,
-            action: 'order_accepted',
-            meta: { status }
-          });
-        }
-
-        if (status === 'picked_up') {
-          const washers = await notifyRoleUsers({
-            role: 'washer',
-            title: 'Order picked up',
-            message: `Order ${order.order_id} has been picked up and is ready for processing.`,
-            eventType: 'order_update',
+        await createSyncEvent({
+            actor_user_id: req.user.user_id,
+            target_user_id: order.user_id,
+            source: 'admin',
+            entity_type: 'email_notification',
+            entity_id: `order:${order.order_id}:${status}`,
+            action: 'order_status',
+            payload: {
+                to: (await User.findByPk(order.user_id)).email,
+                subject: `Order Update: ${status}`,
+                text: `Your order #${order.order_id} is now ${status}.`,
+                html: `<p>Your order #${order.order_id} is now <strong>${status}</strong>.</p>`,
+                user_id: order.user_id,
+                meta: { status, order_id: order.order_id }
+            },
+            critical: false,
             transaction: t
-          });
-          washers.forEach((washer) => {
-            staffEmailQueue.push({
-              user: washer,
-              title: 'Order picked up',
-              message: `Order ${order.order_id} has been picked up and is ready for processing.`,
-              action: 'order_picked_up',
-              meta: { status }
-            });
-          });
-          await notifyAdmins({
-            title: 'Order picked up',
-            message: `Order ${order.order_id} picked up.`,
-            action: 'order_picked_up',
-            meta: { status },
-            actorUserId: req.user.user_id,
-            transaction: t,
-            skipEmail: true
-          });
-          adminEmailQueue.push({
-            title: 'Order picked up',
-            message: `Order ${order.order_id} picked up.`,
-            action: 'order_picked_up',
-            meta: { status }
-          });
-        }
+        });
 
-        if (status === 'ready') {
-          if (order.assigned_rider_id) {
-            const rider = await User.findByPk(order.assigned_rider_id, { transaction: t });
-            if (rider) {
-              await notifyUserInApp(rider.user_id, 'Order ready', `Order ${order.order_id} is ready for delivery.`, 'order_update', t);
-              staffEmailQueue.push({
-                user: rider,
-                title: 'Order ready',
-                message: `Order ${order.order_id} is ready for delivery.`,
-                action: 'order_ready',
-                meta: { status }
-              });
-            }
-          }
-          await notifyAdmins({
-            title: 'Order ready',
-            message: `Order ${order.order_id} marked ready.`,
-            action: 'order_ready',
-            meta: { status },
-            actorUserId: req.user.user_id,
-            transaction: t,
-            skipEmail: true
-          });
-          adminEmailQueue.push({
-            title: 'Order ready',
-            message: `Order ${order.order_id} marked ready.`,
-            action: 'order_ready',
-            meta: { status }
-          });
-        }
-
-        if (status === 'delivered') {
-          const receptionists = await notifyRoleUsers({
-            role: 'receptionist',
-            title: 'Order delivered',
-            message: `Order ${order.order_id} has been delivered.`,
-            eventType: 'order_update',
-            transaction: t
-          });
-          receptionists.forEach((receptionist) => {
-            staffEmailQueue.push({
-              user: receptionist,
-              title: 'Order delivered',
-              message: `Order ${order.order_id} has been delivered.`,
-              action: 'order_delivered',
-              meta: { status }
-            });
-          });
-          await notifyAdmins({
-            title: 'Order delivered',
-            message: `Order ${order.order_id} delivered.`,
-            action: 'order_delivered',
-            meta: { status },
-            actorUserId: req.user.user_id,
-            transaction: t,
-            skipEmail: true
-          });
-          adminEmailQueue.push({
-            title: 'Order delivered',
-            message: `Order ${order.order_id} delivered.`,
-            action: 'order_delivered',
-            meta: { status }
-          });
-        }
-        
-        await t.commit();
-        sse.broadcast('order_updated', order);
-        emitPickupSync(req, 'status_update', order, { from: oldStatus, to: status });
-        try {
-            const user = await User.findByPk(order.user_id);
-            await queueOrderStatusEmail({
-                user,
-                order,
-                status,
-                source: 'admin',
-                actorUserId: req.user.user_id
-            });
-            const userName = user ? (user.full_name || user.email || `User ${order.user_id}`) : `User ${order.user_id}`;
-            const baseMeta = { userName, orderId: order.order_id, status };
-            await Promise.all(staffEmailQueue.map((entry) => {
-              const meta = { ...baseMeta, ...(entry.meta || {}) };
-              const text = buildStaffEmail(entry.title, entry.message, meta);
-              return queueEmailNotification({
-                action: entry.action,
-                entityId: `order:${entry.action}:${entry.user.user_id}:${Date.now()}`,
-                to: entry.user.email,
-                subject: entry.title,
-                text,
-                html: null,
-                userId: entry.user.user_id,
-                meta,
-                source: 'admin',
-                actorUserId: req.user.user_id
-              });
-            }));
-            await Promise.all(adminEmailQueue.map((entry) => {
-              const meta = { ...baseMeta, ...(entry.meta || {}) };
-              const text = buildStaffEmail(entry.title, entry.message, meta);
-              return notifyAdmins({
-                title: entry.title,
-                message: entry.message,
-                subject: entry.title,
-                text,
-                action: entry.action,
-                meta,
-                actorUserId: req.user.user_id,
-                skipInApp: true
-              });
-            }));
-        } catch (e) {
-            console.error('Order email queue failed:', e.message);
-        }
-        res.json(order);
-    } catch (e) { 
-        await t.rollback();
-        res.status(500).json({ error: e.message }); 
+    if (actor && isStaffRole(actor.role)) {
+      await notifyUserInApp(actor.user_id, 'Order updated', `You updated order ${order.order_id} to ${status}.`, 'order_update', t);
+      staffEmailQueue.push({
+        user: actor,
+        title: 'Order updated',
+        message: `You updated order ${order.order_id} to ${status}.`,
+        action: 'order_update_actor',
+        meta: { status }
+      });
     }
+
+    // Process Queued Staff Emails (Async after transaction, or inside sync events)
+    // We will use SyncEvent to send them reliably via Resend
+    for (const item of staffEmailQueue) {
+        await createSyncEvent({
+            actor_user_id: req.user.user_id,
+            target_user_id: item.user.user_id,
+            source: 'admin',
+            entity_type: 'email_notification',
+            entity_id: `staff:update:${item.user.user_id}:${Date.now()}`,
+            action: item.action,
+            payload: {
+                to: item.user.email,
+                subject: item.title,
+                text: item.message,
+                html: `<p>${item.message}</p>`,
+                user_id: item.user.user_id,
+                meta: item.meta
+            },
+            critical: false,
+            transaction: t
+        });
+    }
+
+    await t.commit();
+    sse.broadcast('order_updated', order);
+    emitPickupSync(req, 'updated', order, { status: order.status });
+    res.json(order);
+  } catch (e) {
+    await t.rollback();
+    res.status(500).json({ error: e.message });
+  }
 });
 
 router.post('/orders/:id/accept', async (req, res) => {
