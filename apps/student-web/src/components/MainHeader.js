@@ -44,22 +44,16 @@ export default function MainHeader({ user, title, showBack }) {
         ) : null}
         
         <View style={styles.headerInfo}>
-            {title ? (
-                <Text style={styles.pageTitle}>{title}</Text>
-            ) : (
-                <>
-                    <View style={styles.greetingRow}>
-                        <Ionicons name="sunny-outline" size={14} color={theme.colors.text.secondary} />
-                        <Text style={styles.greeting}>{greeting}</Text>
-                    </View>
-                    <Text style={styles.userName} numberOfLines={1}>
-                        {user?.full_name?.split(' ')[0] || 'User'}!
-                    </Text>
-                    <Text style={styles.institution} numberOfLines={1}>
-                        {user?.school || 'Student'}
-                    </Text>
-                </>
-            )}
+            <View style={styles.greetingRow}>
+                <Ionicons name="sunny-outline" size={14} color={theme.colors.text.secondary} />
+                <Text style={styles.greeting}>{greeting}</Text>
+            </View>
+            <Text style={styles.userName} numberOfLines={1}>
+                {user?.full_name?.split(' ')[0] || 'User'}!
+            </Text>
+            <Text style={styles.institution} numberOfLines={1}>
+                {user?.school || 'Student'}
+            </Text>
         </View>
 
         <TouchableOpacity 
@@ -88,8 +82,8 @@ export default function MainHeader({ user, title, showBack }) {
 const styles = StyleSheet.create({
   headerContainer: {
     backgroundColor: theme.colors.surface,
-    paddingTop: Platform.OS === 'ios' ? 48 : 16, // Safe area
-    paddingBottom: 12,
+    paddingTop: Platform.OS === 'web' ? 24 : (Platform.OS === 'ios' ? 48 : 24), // 20-30px spacing as requested
+    paddingBottom: 16,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.05)',
@@ -99,6 +93,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
+    height: 100, // Fixed height for consistency
+    justifyContent: 'center',
   },
   headerContent: {
     flexDirection: 'row',
