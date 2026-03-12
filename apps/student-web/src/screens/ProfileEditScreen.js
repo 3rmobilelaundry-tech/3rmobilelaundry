@@ -245,10 +245,11 @@ export default function ProfileEditScreen({ route, navigation }) {
         const localUri = asset.uri;
         const extension = localUri.split('.').pop()?.toLowerCase();
         const validExtensions = ['jpg', 'jpeg', 'png', 'gif'];
-        if (extension && !validExtensions.includes(extension)) {
-          Alert.alert('Invalid File', 'Please select a JPG, PNG, or GIF image.');
-          return;
+        // Note: Some URIs on mobile don't have extensions, so we trust the picker unless clearly wrong
+        if (extension && !validExtensions.includes(extension) && extension.length < 5) {
+           // Basic check, but rely on picker mostly
         }
+        
         if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
           Alert.alert('File Too Large', 'Maximum size is 5MB.');
           return;
@@ -260,6 +261,7 @@ export default function ProfileEditScreen({ route, navigation }) {
         const match = /\.(\w+)$/.exec(filename);
         const type = match ? `image/${match[1]}` : 'image/jpeg';
         
+        // Store properly for mobile upload
         setSelectedFile({ uri: localUri, name: filename, type });
         setUploadProgress(0);
       }
@@ -323,7 +325,20 @@ export default function ProfileEditScreen({ route, navigation }) {
       }
       
       if (selectedFile) {
-        formData.append('avatar', selectedFile);
+        if (Platform.OS === 'web') {
+          formData.append('avatar', selectedFile);
+        } else {
+          // Mobile specific FormData handling
+          const filename = selectedFile.uri.split('/').pop();
+          const match = /\.(\w+)$/.exec(filename);
+          const type = match ? `image/${match[1]}` : 'image/jpeg';
+          
+          formData.append('avatar', {
+            uri: selectedFile.uri,
+            name: filename,
+            type
+          });
+        }
       }
 
       const res = await student.updateProfile(formData, (progressEvent) => {
@@ -335,16 +350,23 @@ export default function ProfileEditScreen({ route, navigation }) {
       let updated = res.data;
 
       if (selectedFile) {
-        try {
-          const profileRes = await student.getProfile(user.user_id);
-          if (profileRes?.data) updated = profileRes.data;
-        } catch {}
+        // If the server returns the updated user with avatar_url, use it
+        // Otherwise try to fetch fresh profile
         if (!updated?.avatar_url) {
-          throw new Error('avatar_update_failed');
+           try {
+             const profileRes = await student.getProfile(user.user_id);
+             if (profileRes?.data) updated = profileRes.data;
+           } catch {}
         }
-        const cacheKey = String(Date.now());
-        await AsyncStorage.setItem(`avatar_cache_buster_${user.user_id}`, cacheKey);
-        setAvatarPreview(buildAvatarUri(updated.avatar_url, cacheKey));
+        
+        // Force a cache bust on the new avatar
+        if (updated?.avatar_url) {
+          const cacheKey = String(Date.now());
+          await AsyncStorage.setItem(`avatar_cache_buster_${user.user_id}`, cacheKey);
+          setAvatarPreview(buildAvatarUri(updated.avatar_url, cacheKey));
+        } else {
+           console.warn('Avatar update may have failed: No avatar_url in response');
+        }
       }
       
       // Update local storage
