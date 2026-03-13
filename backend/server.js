@@ -306,7 +306,16 @@ const ensureSeedAdmin = async () => {
 };
 
 if (require.main === module) {
-  sequelize.sync().then(async () => {
+  // Test connection first
+  sequelize.authenticate()
+    .then(() => {
+       console.log('PostgreSQL connection successful');
+       console.log('Connecting to PostgreSQL...');
+       return sequelize.sync();
+    })
+    .then(async () => {
+    console.log('Database connected successfully');
+    console.log('Database tables initialized');
     try {
       const table = await sequelize.getQueryInterface().describeTable('Users');
       if (!table.avatar_url) {
