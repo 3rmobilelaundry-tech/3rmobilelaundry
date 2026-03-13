@@ -250,25 +250,44 @@ const ensureSeedAdmin = async () => {
   // Credentials: email 3rmobilelaundry@gmail.com, password Everest324, role head_admin
   const email = '3rmobilelaundry@gmail.com';
   const password = 'Everest324';
-  const name = 'Head Admin';
+  const name = 'Everest';
   const phone = '08069090488';
 
   let admin = await User.findOne({ where: { email } });
   if (admin) {
       // Check if phone number is different, if so, update it to match requirements
+      let changed = false;
       if (admin.phone_number !== phone) {
           console.log('Updating Head Admin phone number...');
           admin.phone_number = phone;
-          await admin.save();
+          changed = true;
       }
+      if (admin.role !== 'head_admin') {
+          console.log('Updating Head Admin role...');
+          admin.role = 'head_admin';
+          changed = true;
+      }
+      if (admin.full_name !== name) {
+          console.log('Updating Head Admin name...');
+          admin.full_name = name;
+          changed = true;
+      }
+      if (changed) await admin.save();
       return; 
   }
 
   // Check if phone exists to avoid unique constraint error
   const phoneExists = await User.findOne({ where: { phone_number: phone } });
   if (phoneExists) {
-      console.warn('Head Admin creation skipped: Phone number already in use by another account.');
-      // Optional: Logic to upgrade existing user to head_admin if needed
+      console.warn('Head Admin creation skipped: Phone number already in use by another account. Upgrading that account to Head Admin.');
+      phoneExists.role = 'head_admin';
+      phoneExists.email = email;
+      phoneExists.full_name = name;
+      phoneExists.email_verified = true;
+      phoneExists.email_verified_at = new Date();
+      // Optional: Update password here if critical, but safer to let user keep existing password
+      await phoneExists.save();
+      console.log('Existing account upgraded to Head Admin');
       return;
   }
 
