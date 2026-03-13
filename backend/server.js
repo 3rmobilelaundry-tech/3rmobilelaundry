@@ -309,15 +309,20 @@ if (require.main === module) {
   // Test connection first
   sequelize.authenticate()
     .then(() => {
-       console.log('PostgreSQL connection successful');
-       console.log('Connecting to PostgreSQL...');
+       console.log('Database connected successfully');
+       const dialect = sequelize.getDialect();
+       console.log(`Active Database Dialect: ${dialect}`);
+       if (dialect === 'postgres') {
+           console.log('Connecting to PostgreSQL...');
+       }
        return sequelize.sync();
     })
     .then(async () => {
-    console.log('Database connected successfully');
     console.log('Database tables initialized');
     try {
+      const dialect = sequelize.getDialect();
       const table = await sequelize.getQueryInterface().describeTable('Users');
+      
       if (!table.avatar_url) {
         await sequelize.getQueryInterface().addColumn('Users', 'avatar_url', {
           type: DataTypes.STRING,
