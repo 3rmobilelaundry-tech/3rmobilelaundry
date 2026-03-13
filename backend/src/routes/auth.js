@@ -201,9 +201,12 @@ router.post('/register', async (req, res) => {
           user.email,
           'Verify Your Email - 3R Mobile Laundry',
           `<h2>Email Verification</h2>
+           <p>Hello,</p>
            <p>Your verification code is:</p>
            <h1>${otp}</h1>
-           <p>This code expires in 10 minutes.</p>`
+           <p>Enter this code in the app to verify your email.</p>
+           <p>If you did not request this, please ignore this email.</p>
+           <p>3R Mobile Laundry Team</p>`
         );
         console.log(`Verification email sent to ${user.email}`);
       } catch (emailError) {
@@ -579,9 +582,12 @@ router.post('/email-verification/resend', async (req, res) => {
       user.email,
       'Verify Your Email - 3R Mobile Laundry',
       `<h2>Email Verification</h2>
+       <p>Hello,</p>
        <p>Your verification code is:</p>
        <h1>${otp}</h1>
-       <p>This code expires in 10 minutes.</p>`
+       <p>Enter this code in the app to verify your email.</p>
+       <p>If you did not request this, please ignore this email.</p>
+       <p>3R Mobile Laundry Team</p>`
     );
     res.json({ success: true, message: 'Verification code sent', cooldown_seconds: 60 });
   } catch (error) {
