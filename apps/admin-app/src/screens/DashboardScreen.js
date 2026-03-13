@@ -30,6 +30,11 @@ export default function DashboardScreen({ route, navigation }) {
     } catch (error) {
       const normalized = error?.normalized || normalizeApiError(error);
       if (isInvalidTokenError(normalized)) return;
+      // Suppress 404 errors for orders
+      if (error.response?.status === 404) {
+          setOrders([]);
+          return;
+      }
       console.log('Error fetching orders', normalized);
     } finally {
       setRefreshing(false);

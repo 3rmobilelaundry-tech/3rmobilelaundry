@@ -220,13 +220,25 @@ export default function UsersScreen({ lastUpdate, currentUser }) {
       const payload = res.data;
       const items = Array.isArray(payload) ? payload : payload.items || [];
       const meta = Array.isArray(payload) ? { total: items.length, pages: 1 } : payload.meta || {};
-      setUsers(items);
-      setFilteredUsers(items);
-      setTotalPages(meta.pages || Math.max(1, Math.ceil((meta.total || items.length) / pageSize)));
-      setTotalCount(meta.total || items.length);
-      cacheRef.current[cacheKey] = { items, meta, fetchedAt: Date.now() };
+      
+      // Safety check: ensure items is always an array
+      const safeItems = Array.isArray(items) ? items : [];
+      
+      setUsers(safeItems);
+      setFilteredUsers(safeItems);
+      setTotalPages(meta.pages || Math.max(1, Math.ceil((meta.total || safeItems.length) / pageSize)));
+      setTotalCount(meta.total || safeItems.length);
+      cacheRef.current[cacheKey] = { items: safeItems, meta, fetchedAt: Date.now() };
     } catch (e) {
-      Alert.alert('Error', 'Failed to fetch users');
+      console.error('Fetch users error:', e);
+      // Don't alert on initial load failure to avoid spamming alerts if it's just empty
+      // Only alert if it's a real error not a 404
+      if (e.response?.status !== 404) {
+         Alert.alert('Error', 'Failed to fetch users');
+      }
+      setUsers([]);
+      setFilteredUsers([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
