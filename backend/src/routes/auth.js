@@ -181,7 +181,7 @@ router.post('/register', async (req, res) => {
     });
 
     if (needsEmailVerification) {
-      console.log("Generating verification code...");
+      console.log("Verification code generated...");
       const otp = generateOtp();
       const otpHash = await bcrypt.hash(otp, 10);
       const expiresAt = otpExpiresAt();
@@ -195,7 +195,7 @@ router.post('/register', async (req, res) => {
       });
 
       try {
-        console.log("Sending verification email...");
+        console.log("Triggering verification email...");
         // Send verification email using Resend service
         await sendEmail(
           user.email,
@@ -208,7 +208,7 @@ router.post('/register', async (req, res) => {
            <p>If you did not request this, please ignore this email.</p>
            <p>3R Mobile Laundry Team</p>`
         );
-        console.log(`Verification email sent to ${user.email}`);
+        console.log(`Verification email sent successfully to ${user.email}`);
       } catch (emailError) {
         console.error('Verification email failed:', emailError);
         // Don't fail registration, user can request resend later
@@ -569,7 +569,7 @@ router.post('/email-verification/resend', async (req, res) => {
     if (shouldThrottle(user.email_verification_sent_at)) {
       return res.status(429).json({ error: 'Please wait before resending', code: 'cooldown', cooldown_seconds: remainingCooldown(user.email_verification_sent_at) });
     }
-    const otp = generateOtp();
+    console.log("Verification code generated:", otp);
     const otpHash = await bcrypt.hash(otp, 10);
     const expiresAt = otpExpiresAt();
     await user.update({
@@ -577,7 +577,7 @@ router.post('/email-verification/resend', async (req, res) => {
       email_verification_expires_at: expiresAt,
       email_verification_sent_at: new Date()
     });
-    console.log(`Sending verification email to ${user.email}...`);
+    console.log("Triggering verification email...");
     await sendEmail(
       user.email,
       'Verify Your Email - 3R Mobile Laundry',
@@ -589,6 +589,7 @@ router.post('/email-verification/resend', async (req, res) => {
        <p>If you did not request this, please ignore this email.</p>
        <p>3R Mobile Laundry Team</p>`
     );
+    console.log(`Verification email sent successfully to ${user.email}`);
     res.json({ success: true, message: 'Verification code sent', cooldown_seconds: 60 });
   } catch (error) {
     console.error('Resend verification code error:', error);
