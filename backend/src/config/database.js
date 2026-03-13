@@ -2,16 +2,19 @@ require('dotenv').config();
 const { Sequelize } = require("sequelize");
 const path = require('path');
 
-console.log("Initializing Database...");
+console.log("DATABASE_URL from environment:", process.env.DATABASE_URL ? "FOUND" : "MISSING");
 
 let sequelize;
 
-// Force PostgreSQL if DATABASE_URL is present
-if (process.env.DATABASE_URL) {
-  console.log("Database type: PostgreSQL");
-  console.log("Using connection string starting with:", process.env.DATABASE_URL.substring(0, 15) + "...");
+const dbUrl = process.env.DATABASE_URL;
 
-  sequelize = new Sequelize(process.env.DATABASE_URL, {
+console.log("DATABASE_URL detected:", dbUrl ? "YES" : "NO");
+
+if (dbUrl) {
+  console.log("Initializing Database...");
+  console.log("Database type: PostgreSQL");
+
+  sequelize = new Sequelize(dbUrl, {
     dialect: "postgres",
     protocol: "postgres",
     logging: false,
@@ -24,8 +27,7 @@ if (process.env.DATABASE_URL) {
   });
 
 } else {
-  console.log("⚠️ PostgreSQL not detected (DATABASE_URL is missing).");
-  console.log("Falling back to SQLite (development only)");
+  console.log("⚠️ PostgreSQL not detected (DATABASE_URL missing). Using SQLite only for development.");
 
   sequelize = new Sequelize({
     dialect: "sqlite",
