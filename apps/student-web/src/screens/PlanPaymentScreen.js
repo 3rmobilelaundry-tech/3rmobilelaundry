@@ -164,11 +164,12 @@ export default function PlanPaymentScreen({ navigation, route }) {
     } else {
       Alert.alert(
         title,
-        message,
+        `${message}\n\nProceed to place pending order?`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'I Have Paid / Will Pay', onPress: proceed }
-        ]
+          { text: 'Place Order', onPress: proceed }
+        ],
+        { cancelable: true }
       );
     }
   };
@@ -353,6 +354,11 @@ export default function PlanPaymentScreen({ navigation, route }) {
       onPress: () => handleManualPayment('cash'),
     },
   };
+
+  // Helper to ensure cash is always available if methods are empty or weird
+  if (allowedMethods.length === 0) {
+     allowedMethods.push('cash');
+  }
 
   return (
     <ScrollView style={styles.container}>
