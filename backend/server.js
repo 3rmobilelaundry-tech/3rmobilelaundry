@@ -453,11 +453,17 @@ if (require.main === module) {
 
     // Ensure head_admin is in the role enum
     try {
-      const [results] = await sequelize.query(`SELECT enum_range(NULL::"enum_Users_role") as values;`);
-      const values = results[0].values ? results[0].values.replace(/[{}]/g, '').split(',') : [];
-      if (!values.includes('head_admin')) {
-        await sequelize.query(`ALTER TYPE "enum_Users_role" ADD VALUE 'head_admin';`);
-        console.log('Added head_admin to role enum');
+      if (sequelize.getDialect() === 'postgres') {
+        // PostgreSQL ENUM handling
+        const [results] = await sequelize.query(`SELECT enum_range(NULL::"enum_Users_role") as values;`);
+        const values = results[0].values ? results[0].values.replace(/[{}]/g, '').split(',') : [];
+        if (!values.includes('head_admin')) {
+          await sequelize.query(`ALTER TYPE "enum_Users_role" ADD VALUE 'head_admin';`);
+          console.log('Added head_admin to role enum (PostgreSQL)');
+        }
+      } else {
+        // SQLite or other dialects - skip complex ENUM alteration
+        console.log('Skipping ENUM migration for non-Postgres dialect:', sequelize.getDialect());
       }
     } catch (e) {
       console.error('Failed to alter role enum:', e.message);
