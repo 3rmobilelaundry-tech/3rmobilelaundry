@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run build:web",
-  "outputDirectory": "web-build",
+  "buildCommand": "npm run build",
+  "outputDirectory": "apps/student-web/web-build",
   "routes": [
     { "handle": "filesystem" },
     { "src": "/.*", "dest": "/index.html" }
