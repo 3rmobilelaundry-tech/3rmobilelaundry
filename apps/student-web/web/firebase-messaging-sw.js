@@ -1,12 +1,11 @@
-// Give the service worker access to Firebase Messaging.
-// Note that you can only use Firebase Messaging here. Other Firebase libraries
-// are not available in the service worker.
-importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js');
-importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js');
+// Service Worker for Firebase Messaging
+// This file runs in the background to handle notifications when the app is closed.
 
-// Initialize the Firebase app in the service worker by passing in
-// your app's Firebase config object.
-// https://firebase.google.com/docs/web/setup#config-object
+// Import Firebase compat scripts
+importScripts('https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.6.10/firebase-messaging-compat.js');
+
+// Initialize Firebase
 firebase.initializeApp({
   apiKey: "AIzaSyA6xhtNQOjneQQ4UhAHhiIOxSGTq4GuqIQ",
   authDomain: "r-mobile-laundry.firebaseapp.com",

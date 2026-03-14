@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>3R Laundry User</title>
+  <style>
+    body { -webkit-text-size-adjust: 100%; }
+    #root { display: flex; height: 100%; flex: 1; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Firebase Scripts (CDN) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-messaging-compat.js"></script>
+  
+  <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyA6xhtNQOjneQQ4UhAHhiIOxSGTq4GuqIQ",
+      authDomain: "r-mobile-laundry.firebaseapp.com",
+      projectId: "r-mobile-laundry",
+      storageBucket: "r-mobile-laundry.firebasestorage.app",
+      messagingSenderId: "399581573326",
+      appId: "1:399581573326:web:3668d176c0caa99d09209f"
+    };
+
+    try {
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const messaging = firebase.messaging();
+        
+        // Expose messaging to window for the React app
+        window.firebaseMessaging = messaging;
+
+        async function initializePushNotifications() {
+          try {
+            if ('Notification' in window) {
+                const permission = await Notification.requestPermission();
+                if (permission === "granted") {
+                  const token = await messaging.getToken({ 
+                    vapidKey: "BGiLli9FQyuwrMnhlTZAYLnU8V2RDVFRRtL39jExoYE5WVIzAy9MbWc1cDoU1VluKo1jywTZjgdp54yrFZf6Eik" 
+                  });
+
+                  console.log("FCM Token:", token);
+                  window.fcmToken = token; // Store globally for React app access
+                  
+                  // Note: Registration with backend requires User ID, which we might not have yet.
+                  // The React app (pushService.js) will handle sending this to the backend after login.
+                }
+            }
+          } catch (error) {
+            console.error("Push notification error:", error);
+          }
+        }
+
+        initializePushNotifications();
+
+        // Handle foreground messages
+        messaging.onMessage(function(payload) {
+          console.log("Message received. ", payload);
+          const { title, body } = payload.notification || {};
+          if (title && 'Notification' in window && Notification.permission === "granted") {
+            new Notification(title, { 
+              body: body, 
+              icon: "/logo.png" 
+            });
+          }
+        });
+
+    } catch (e) {
+        console.error("Firebase initialization failed:", e);
+    }
+  </script>
+</body>
+</html>
