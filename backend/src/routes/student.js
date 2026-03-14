@@ -1207,10 +1207,9 @@ router.post('/book', async (req, res) => {
       }
     }
 
-    // 1. Check active subscription
+    // 1. Check active subscription (Row Locking for Concurrency Safety)
     const sub = await Subscription.findOne({
       where: { user_id, status: 'active' },
-      include: [Plan],
       lock: true,
       transaction: t
     });
@@ -1219,6 +1218,16 @@ router.post('/book', async (req, res) => {
       await t.rollback();
       return res.status(403).json({ error: 'No active subscription found' });
     }
+
+    // Fetch Plan separately to avoid "FOR UPDATE cannot be applied to the nullable side of an outer join"
+    const plan = await Plan.findByPk(sub.plan_id, { transaction: t });
+    if (!plan) {
+        await t.rollback();
+        return res.status(404).json({ error: 'Subscription plan not found' });
+    }
+    // Attach plan to subscription object for downstream compatibility
+    sub.Plan = plan;
+    sub.dataValues.Plan = plan; // Ensure Sequelize uses it if accessing .dataValues directly
 
     const user = await User.findByPk(user_id, { transaction: t });
 
