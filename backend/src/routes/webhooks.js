@@ -30,18 +30,18 @@ router.post('/paystack', async (req, res) => {
                         
                         // Notify User via WhatsApp
                         const user = await User.findByPk(sub.user_id);
-                        if (user && user.phone_number) {
-                            await IntegrationService.sendWhatsApp(user.phone_number, `Your subscription is now active!`);
+                        if (user) {
+                            if (user.phone_number) {
+                                await IntegrationService.sendWhatsApp(user.phone_number, `Your subscription is now active!`);
+                            }
+                            await IntegrationService.sendPushNotification(user.user_id, 'Subscription Active', 'Your subscription is now active!');
                         }
                     }
                 } else if (metadata.type === 'order' && metadata.order_id) {
                     const order = await Order.findByPk(metadata.order_id);
                     if (order) {
-                        // Assuming payment confirms the order or something
-                        // order.payment_status = 'paid'; // If we had such field
-                        // For now, maybe we move it to 'accepted' if it was pending payment?
-                        // Or just log it.
                         console.log(`Payment received for order ${order.order_id}`);
+                        await IntegrationService.sendPushNotification(order.user_id, 'Payment Received', `Payment received for order #${order.order_id}`);
                     }
                 }
             }

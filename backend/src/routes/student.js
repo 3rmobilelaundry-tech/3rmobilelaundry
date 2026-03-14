@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { User, Notification, AuditLog, Plan, Subscription, Order, Code, Payment, ChatThread, ChatMessage, RegistrationField, School } = require('../models');
+const { User, Notification, AuditLog, Plan, Subscription, Order, Code, Payment, ChatThread, ChatMessage, RegistrationField, School, DeviceToken } = require('../models');
 const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
@@ -1921,18 +1921,26 @@ router.post('/push-token', async (req, res) => {
     const { user_id, token } = req.body;
     if (!user_id || !token) return res.status(400).json({ error: 'User ID and token required' });
     
-    const user = await User.findByPk(user_id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    // Store in DeviceToken table
+    const [record, created] = await DeviceToken.findOrCreate({
+      where: { token },
+      defaults: {
+        user_id,
+        platform: 'web',
+        last_active: new Date()
+      }
+    });
+
+    if (!created && Number(record.user_id) !== Number(user_id)) {
+        await record.update({ user_id, last_active: new Date() });
+    } else if (!created) {
+        await record.update({ last_active: new Date() });
+    }
     
-    // Store in profile_fields
-    const profileFields = user.profile_fields && typeof user.profile_fields === 'object' && !Array.isArray(user.profile_fields)
-        ? { ...user.profile_fields }
-        : {};
+    // Legacy support: update profile_fields for backward compatibility if needed
+    // But we are moving away from it.
     
-    profileFields.push_token = token;
-    
-    await user.update({ profile_fields: profileFields });
-    console.log('Push token registered', { user_id, token: token.substring(0, 20) + '...' });
+    console.log('Push token registered (DeviceToken)', { user_id, token: token.substring(0, 20) + '...' });
     
     res.json({ success: true });
   } catch (error) {

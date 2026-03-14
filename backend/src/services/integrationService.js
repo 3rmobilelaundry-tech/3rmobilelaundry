@@ -3,6 +3,8 @@ const path = require('path');
 const axios = require('axios');
 const { Notification, User } = require('../models');
 const emailService = require('./emailService');
+const pushService = require('./pushService');
+
 
 const SETTINGS_PATH = path.join(__dirname, '..', 'config', 'app-settings.json');
 const API_LOG_PATH = path.join(__dirname, '..', 'logs', 'api-errors.log');
@@ -195,8 +197,14 @@ const IntegrationService = {
   },
 
   async sendPushNotification(userId, title, message) {
-    console.log(`[Push Notification] To User ${userId}: ${title} - ${message}`);
-    return true;
+    try {
+      console.log(`[Push Notification] To User ${userId}: ${title} - ${message}`);
+      await pushService.sendPushNotification(userId, title, message);
+      return true;
+    } catch (e) {
+      console.error('Failed to send push notification:', e);
+      return false;
+    }
   }
 };
 

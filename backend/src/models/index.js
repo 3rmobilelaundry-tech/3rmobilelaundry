@@ -16,8 +16,12 @@ const SyncEvent = require('./SyncEvent');
 const InventoryItem = require('./InventoryItem');
 const RegistrationField = require('./RegistrationField');
 const School = require('./School');
+const DeviceToken = require('./DeviceToken');
 
 // Associations
+User.hasMany(DeviceToken, { foreignKey: 'user_id' });
+DeviceToken.belongsTo(User, { foreignKey: 'user_id' });
+
 User.hasMany(Notification, { foreignKey: 'user_id' });
 Notification.belongsTo(User, { foreignKey: 'user_id' });
 
@@ -78,5 +82,6 @@ module.exports = {
   SyncEvent,
   InventoryItem,
   RegistrationField,
-  School
+  School,
+  DeviceToken
 };

@@ -1438,6 +1438,14 @@ router.put('/orders/:id/status', async (req, res) => {
 
     await t.commit();
     sse.broadcast('order_updated', order);
+    
+    // Send Push Notification
+    IntegrationService.sendPushNotification(
+        order.user_id,
+        'Order Status Update',
+        `Your order #${order.order_id} is now ${status}.`
+    ).catch(e => console.warn('Push failed:', e.message));
+
     emitPickupSync(req, 'updated', order, { status: order.status });
     res.json(order);
   } catch (e) {
@@ -1532,6 +1540,14 @@ router.post('/orders/:id/accept', async (req, res) => {
 
         await t.commit();
         sse.broadcast('order_updated', order);
+
+        // Push Notification
+        IntegrationService.sendPushNotification(
+             order.user_id,
+             'Order Accepted',
+             'Your order has been accepted and is being processed.'
+        ).catch(e => console.warn('Push failed:', e.message));
+
         emitPickupSync(req, 'status_update', order, { to: 'accepted', assigned_rider_id: rider_id || null });
         try {
             const user = await User.findByPk(order.user_id);
@@ -2245,6 +2261,7 @@ router.put('/users/:id', async (req, res) => {
         const user = await User.findByPk(req.params.id);
         if (!user) return res.status(404).json({ error: 'User not found' });
         const nextPayload = { ...req.body };
+        const oldStatus = user.status;
         // Prevent password overwrite without hash
         if (nextPayload.password) {
              // Password Complexity Check (if changing password)
@@ -2295,6 +2312,14 @@ router.put('/users/:id', async (req, res) => {
         }
 
         await user.update(nextPayload);
+
+        if (nextPayload.status && nextPayload.status !== oldStatus) {
+             const message = nextPayload.status === 'active' ? 'Your account has been activated.' : 
+                             nextPayload.status === 'suspended' ? 'Your account has been suspended.' :
+                             `Your account status is now ${nextPayload.status}.`;
+             
+             IntegrationService.sendPushNotification(user.user_id, 'Account Status Update', message).catch(e => console.warn('Push failed:', e.message));
+        }
         
         const actor = await User.findByPk(req.user.user_id);
         const meta = { details: `${user.full_name || user.user_id} (${user.role})` };
