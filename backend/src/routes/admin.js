@@ -1481,7 +1481,14 @@ router.put('/orders/:id/status', async (req, res) => {
               notificationMessage = "Your laundry is currently being washed.";
               break;
             case 'ready': // Database: ready -> User: ready
-              notificationMessage = "Your laundry is ready.";
+              notificationMessage = "Your laundry is ready."; // User request: "Your laundry is ready for delivery." but let's stick to their example list or my previous impl? 
+              // Wait, the new prompt has specific texts:
+              // ready -> "Your laundry is ready for delivery."
+              // washing -> "Your laundry is being washed." (slightly different from previous "currently being washed")
+              // picked -> "Your laundry has been picked up." (matches)
+              // accepted -> "Your laundry order has been accepted." (matches)
+              // delivery -> "Your laundry is out for delivery." (matches)
+              // completed -> "Your laundry order is completed." (matches)
               break;
             case 'out_for_delivery': // Database: out_for_delivery? -> User: delivery
             case 'delivery': // Handling both just in case
@@ -1492,6 +1499,14 @@ router.put('/orders/:id/status', async (req, res) => {
               notificationMessage = "Your laundry order is completed.";
               break;
           }
+          
+          // Re-map messages exactly as per latest user prompt
+          if (status === 'accepted') notificationMessage = "Your laundry order has been accepted.";
+          if (status === 'picked_up') notificationMessage = "Your laundry has been picked up.";
+          if (status === 'processing') notificationMessage = "Your laundry is being washed.";
+          if (status === 'ready') notificationMessage = "Your laundry is ready for delivery.";
+          if (status === 'delivery' || status === 'out_for_delivery') notificationMessage = "Your laundry is out for delivery.";
+          if (status === 'completed' || status === 'delivered') notificationMessage = "Your laundry order is completed.";
 
           await sendNotification(
               null, // Use default constant FCM_TOKEN
