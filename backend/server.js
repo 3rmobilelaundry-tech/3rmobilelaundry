@@ -94,7 +94,6 @@ app.use((req, res, next) => {
 // Serve Head Admin Web App (static build) under port 5000
 try {
   const adminWebBuild = path.join(__dirname, 'public', 'admin');
-try {
   if (fs.existsSync(adminWebBuild)) {
     app.use('/admin', express.static(adminWebBuild));
     console.log('Admin web static mounted at /admin');
@@ -139,15 +138,14 @@ try {
 // 1. Admin App Catch-All
 app.get('/admin-web/*', (req, res) => {
   const adminIndexPath = path.join(__dirname, 'public', 'admin', 'index.html');
-  app.get('/admin-web/*', (req, res) => {
-    if (fs.existsSync(adminIndexPath)) {
-      res.set('Cache-Control', 'no-store');
-      res.sendFile(adminIndexPath);
-    } else {
-      console.error(`Admin App build not found at: ${adminIndexPath}`);
-      res.status(404).send('Admin App build not found');
-    }
-  });
+  if (fs.existsSync(adminIndexPath)) {
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(adminIndexPath);
+  } else {
+    console.error(`Admin App build not found at: ${adminIndexPath}`);
+    res.status(404).send('Admin App build not found');
+  }
+});
 
 app.get('/user/*', (req, res) => {
   if (fs.existsSync(userIndexPath)) {
