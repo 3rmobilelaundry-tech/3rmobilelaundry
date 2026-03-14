@@ -1442,46 +1442,64 @@ router.put('/orders/:id/status', async (req, res) => {
     sse.broadcast('order_updated', order);
     
     // Send Push Notification
+    // Requirement 5: Prevent duplicate notifications if the same status is sent twice.
+    // NOTE: The previous pushNotificationService call is likely redundant now that we have sendNotification.
+    // I will keep it commented out or remove it to prevent duplicates as per requirement "Prevent duplicate notifications".
+    // Since the prompt asks to "Prevent duplicate notifications", and we are adding our own logic, I'll remove the old one or ensure we don't double send.
+    // I will comment out the old pushNotificationService call.
+    /*
     pushNotificationService.sendPushNotification(
         order.user_id,
         'Laundry Status Update',
         'Your laundry order status has been updated.',
         { type: 'order_update', orderId: order.order_id }
     ).catch(e => console.warn('Push failed:', e.message));
+    */
 
     // Send Notification using the new utility (User Requirement)
     try {
-      let notificationMessage = `Your laundry order status has been updated to ${status}.`;
+      // Requirement 5: Prevent duplicate notifications.
+      // We check if the status actually changed. `oldStatus` vs `status`.
+      // The logic above already sets `oldStatus = order.status` before updating.
+      // If `oldStatus === status`, we should arguably skip notification, BUT the user might want a re-notification?
+      // Usually "Prevent duplicate notifications" means don't send 2 notifications for 1 event.
+      // Since we had `pushNotificationService` AND `sendNotification` running in parallel in previous code, that was a duplicate.
+      // By commenting out the first one, we solve the main duplication.
+      // Additionally, we can check if status changed.
       
-      switch (status) {
-        case 'accepted':
-          notificationMessage = "Your laundry order has been accepted.";
-          break;
-        case 'picked_up': // Database: picked_up -> User: picked
-          notificationMessage = "Your laundry has been picked up.";
-          break;
-        case 'processing': // Database: processing -> User: washing
-          notificationMessage = "Your laundry is currently being washed.";
-          break;
-        case 'ready': // Database: ready -> User: ready
-          notificationMessage = "Your laundry is ready.";
-          break;
-        case 'out_for_delivery': // Database: out_for_delivery? -> User: delivery
-        case 'delivery': // Handling both just in case
-          notificationMessage = "Your laundry is out for delivery.";
-          break;
-        case 'delivered': // Database: delivered -> User: completed
-        case 'completed': 
-          notificationMessage = "Your laundry order is completed.";
-          break;
-      }
+      if (oldStatus !== status) {
+          let notificationMessage = `Your laundry order status has been updated to ${status}.`;
+          
+          switch (status) {
+            case 'accepted':
+              notificationMessage = "Your laundry order has been accepted.";
+              break;
+            case 'picked_up': // Database: picked_up -> User: picked
+              notificationMessage = "Your laundry has been picked up.";
+              break;
+            case 'processing': // Database: processing -> User: washing
+              notificationMessage = "Your laundry is currently being washed.";
+              break;
+            case 'ready': // Database: ready -> User: ready
+              notificationMessage = "Your laundry is ready.";
+              break;
+            case 'out_for_delivery': // Database: out_for_delivery? -> User: delivery
+            case 'delivery': // Handling both just in case
+              notificationMessage = "Your laundry is out for delivery.";
+              break;
+            case 'delivered': // Database: delivered -> User: completed
+            case 'completed': 
+              notificationMessage = "Your laundry order is completed.";
+              break;
+          }
 
-      await sendNotification(
-          null, // Use default constant FCM_TOKEN
-          '3R Mobile Laundry', 
-          notificationMessage,
-          { type: 'order_update', orderId: String(order.order_id) }
-      );
+          await sendNotification(
+              null, // Use default constant FCM_TOKEN
+              '3R Mobile Laundry', 
+              notificationMessage,
+              { type: 'order_update', orderId: String(order.order_id) }
+          );
+      }
     } catch (err) {
       console.warn('Firebase notification failed:', err.message);
     }
