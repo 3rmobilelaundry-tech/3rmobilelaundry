@@ -10,6 +10,7 @@ const IntegrationService = require('../services/integrationService');
 const sse = require('../services/sse');
 const { createSyncEvent, queueOrderStatusEmail, queuePaymentEmail, queueEmailNotification } = require('../services/syncService');
 const pushNotificationService = require('../services/pushNotificationService');
+const sendNotification = require('../../utils/sendNotification');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -1448,6 +1449,14 @@ router.put('/orders/:id/status', async (req, res) => {
         { type: 'order_update', orderId: order.order_id }
     ).catch(e => console.warn('Push failed:', e.message));
 
+    // Send Notification using the new utility (User Requirement)
+    sendNotification(
+        null, // Use default constant
+        'Laundry Status Update', 
+        `Your laundry order status has been updated to ${status}.`,
+        { type: 'order_update', orderId: String(order.order_id) }
+    );
+
     emitPickupSync(req, 'updated', order, { status: order.status });
     res.json(order);
   } catch (e) {
@@ -1550,6 +1559,14 @@ router.post('/orders/:id/accept', async (req, res) => {
              'Your laundry order status has been updated.',
              { type: 'order_update', orderId: order.order_id }
         ).catch(e => console.warn('Push failed:', e.message));
+
+        // Send Notification using the new utility
+        sendNotification(
+             null,
+             'Laundry Status Update', 
+             'Your order has been accepted.',
+             { type: 'order_update', orderId: String(order.order_id) }
+        );
 
         emitPickupSync(req, 'status_update', order, { to: 'accepted', assigned_rider_id: rider_id || null });
         try {

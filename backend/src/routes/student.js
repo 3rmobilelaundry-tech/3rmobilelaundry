@@ -8,6 +8,7 @@ const IntegrationService = require('../services/integrationService');
 const sse = require('../services/sse');
 const { createSyncEvent, queuePaymentEmail, queueOrderStatusEmail, queueEmailNotification } = require('../services/syncService');
 const pushNotificationService = require('../services/pushNotificationService');
+const sendNotification = require('../../utils/sendNotification');
 const multer = require('multer');
 const jwt = require('jsonwebtoken');
 const { verifyToken } = require('../middleware/auth');
@@ -1413,6 +1414,14 @@ router.post('/book', async (req, res) => {
       'Your laundry pickup request has been successfully created.',
       { type: 'order_created', orderId: order.order_id }
     ).catch(err => console.error('Push error:', err));
+
+    // Send Notification using the new utility
+    sendNotification(
+      null, 
+      'Laundry Pickup Scheduled', 
+      'Your laundry pickup request has been successfully created.',
+      { type: 'order_created', orderId: String(order.order_id) }
+    );
 
     // Create User Notification
     const userNotification = await Notification.create({
