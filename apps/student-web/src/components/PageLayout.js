@@ -33,6 +33,7 @@ export default function PageLayout({
             </View>
         ) : scrollable ? (
             <ScrollView 
+                style={{ flex: 1 }}
                 contentContainerStyle={[
                     styles.scrollContent, 
                     noPadding && { paddingHorizontal: 0 },
@@ -63,7 +64,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
     // Ensure the container itself doesn't scroll
-    overflow: 'hidden', 
+    ...Platform.select({
+        web: {
+            overflow: 'visible',
+            height: 'auto',
+            minHeight: '100vh',
+        },
+        default: {
+            overflow: 'hidden',
+        }
+    })
   },
   headerWrapper: {
     position: Platform.OS === 'web' ? 'fixed' : 'absolute',
@@ -78,8 +88,11 @@ const styles = StyleSheet.create({
     // On web, we want to ensure the scrollbar is for this container
     ...Platform.select({
         web: {
-            overflowY: 'auto',
-            height: '100%',
+            overflow: 'visible',
+            height: 'auto',
+            minHeight: '100%',
+            display: 'flex',
+            flexDirection: 'column'
         },
         default: {
             overflow: 'hidden',

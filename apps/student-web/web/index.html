@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>3R Laundry User</title>
   <style>
-    /* Essential for React Native Web */
-    html, body { height: 100%; width: 100%; overflow: hidden; margin: 0; padding: 0; }
-    #root { display: flex; height: 100%; width: 100%; flex-direction: column; }
+    /* Essential for React Native Web - Modified for Scroll Fix */
+    html, body { height: auto; min-height: 100vh; overflow-y: auto; margin: 0; padding: 0; }
+    #root { display: flex; min-height: 100vh; width: 100%; flex-direction: column; }
   </style>
 </head>
 <body>
