@@ -1450,12 +1450,41 @@ router.put('/orders/:id/status', async (req, res) => {
     ).catch(e => console.warn('Push failed:', e.message));
 
     // Send Notification using the new utility (User Requirement)
-    sendNotification(
-        null, // Use default constant
-        'Laundry Status Update', 
-        `Your laundry order status has been updated to ${status}.`,
-        { type: 'order_update', orderId: String(order.order_id) }
-    );
+    try {
+      let notificationMessage = `Your laundry order status has been updated to ${status}.`;
+      
+      switch (status) {
+        case 'accepted':
+          notificationMessage = "Your laundry order has been accepted.";
+          break;
+        case 'picked_up': // Database: picked_up -> User: picked
+          notificationMessage = "Your laundry has been picked up.";
+          break;
+        case 'processing': // Database: processing -> User: washing
+          notificationMessage = "Your laundry is currently being washed.";
+          break;
+        case 'ready': // Database: ready -> User: ready
+          notificationMessage = "Your laundry is ready.";
+          break;
+        case 'out_for_delivery': // Database: out_for_delivery? -> User: delivery
+        case 'delivery': // Handling both just in case
+          notificationMessage = "Your laundry is out for delivery.";
+          break;
+        case 'delivered': // Database: delivered -> User: completed
+        case 'completed': 
+          notificationMessage = "Your laundry order is completed.";
+          break;
+      }
+
+      await sendNotification(
+          null, // Use default constant FCM_TOKEN
+          '3R Mobile Laundry', 
+          notificationMessage,
+          { type: 'order_update', orderId: String(order.order_id) }
+      );
+    } catch (err) {
+      console.warn('Firebase notification failed:', err.message);
+    }
 
     emitPickupSync(req, 'updated', order, { status: order.status });
     res.json(order);
@@ -1561,12 +1590,16 @@ router.post('/orders/:id/accept', async (req, res) => {
         ).catch(e => console.warn('Push failed:', e.message));
 
         // Send Notification using the new utility
-        sendNotification(
-             null,
-             'Laundry Status Update', 
-             'Your order has been accepted.',
-             { type: 'order_update', orderId: String(order.order_id) }
-        );
+        try {
+            await sendNotification(
+                null,
+                '3R Mobile Laundry', 
+                'Your laundry order has been accepted.',
+                { type: 'order_update', orderId: String(order.order_id) }
+            );
+        } catch (err) {
+            console.warn('Firebase notification failed:', err.message);
+        }
 
         emitPickupSync(req, 'status_update', order, { to: 'accepted', assigned_rider_id: rider_id || null });
         try {
