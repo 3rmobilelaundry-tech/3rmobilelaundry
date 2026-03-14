@@ -40,14 +40,19 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
+import { registerPushToken } from './src/services/pushService';
+
 if (typeof window !== 'undefined') {
-  // Unregister all service workers to prevent stale cache issues
+  // Register Service Worker for PWA
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(function(registrations) {
-      for(let registration of registrations) {
-        console.log('UserApp: Unregistering Service Worker:', registration);
-        registration.unregister();
-      }
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => {
+          console.log('SW registered: ', registration);
+        })
+        .catch(registrationError => {
+          console.log('SW registration failed: ', registrationError);
+        });
     });
   }
 
@@ -165,7 +170,10 @@ function AppNav() {
 
   useEffect(() => {
     console.log(`[UserApp] Auth State: isLoading=${isLoading}, hasToken=${!!userToken}`);
-  }, [isLoading, userToken]);
+    if (userToken && userData?.user_id) {
+      registerPushToken(userData.user_id);
+    }
+  }, [isLoading, userToken, userData]);
 
   useEffect(() => {
     let active = true;

@@ -130,6 +130,7 @@ export const student = {
   initiateEmergencyPayment: (payload) => api.post('/student/payments/emergency/initiate', payload),
   confirmEmergencyPayment: (payload) => api.post('/student/payments/emergency/confirm', payload),
   getCarousel: () => api.get('/carousel/active'),
+  registerPushToken: (user_id, token) => api.post('/student/push-token', { user_id, token }),
 };
 
 export const logFrontError = (payload) => api.post('/student/front-logs', payload);

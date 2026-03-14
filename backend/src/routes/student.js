@@ -1321,6 +1321,7 @@ router.post('/book', async (req, res) => {
     const cleanedHostelAddress = String(user?.hostel_address || '').trim() || null;
 
     // 5. Create Order
+    console.log('Creating order...', { user_id, status: 'pending', payment_method });
     const order = await Order.create({
       user_id,
       subscription_id: sub.subscription_id,
@@ -1334,7 +1335,7 @@ router.post('/book', async (req, res) => {
       delivery_address: cleanedHostelAddress,
       status: 'pending' // If cash/transfer, maybe manual confirmation needed? For now, standard flow.
     }, { transaction: t });
-    console.log('Student order created', { order_id: order.order_id, user_id, status: order.status });
+    console.log('Order created successfully', { order_id: order.order_id, user_id });
     
     // 6. Update Subscription Usage
     sub.remaining_pickups -= 1;
@@ -1834,6 +1835,7 @@ router.put('/profile', upload.single('avatar'), async (req, res) => {
     
     // Handle Avatar Upload
     if (req.file) {
+      console.log('Avatar upload started', { user_id, filename: req.file.filename });
       payload.avatar_url = `/uploads/${req.file.filename}`;
     }
 
@@ -1910,6 +1912,31 @@ router.post('/payments/initialize', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Paystack Init Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/push-token', async (req, res) => {
+  try {
+    const { user_id, token } = req.body;
+    if (!user_id || !token) return res.status(400).json({ error: 'User ID and token required' });
+    
+    const user = await User.findByPk(user_id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    // Store in profile_fields
+    const profileFields = user.profile_fields && typeof user.profile_fields === 'object' && !Array.isArray(user.profile_fields)
+        ? { ...user.profile_fields }
+        : {};
+    
+    profileFields.push_token = token;
+    
+    await user.update({ profile_fields: profileFields });
+    console.log('Push token registered', { user_id, token: token.substring(0, 20) + '...' });
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Push token registration failed:', error);
     res.status(500).json({ error: error.message });
   }
 });
