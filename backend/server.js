@@ -505,20 +505,22 @@ if (require.main === module) {
       console.error('Failed to alter role enum:', e.message);
     }
 
-    ensureSeedAdmin().then(async () => {
-      setInterval(() => {
-        processPendingSyncEvents().catch((err) => {
-          console.error('Sync processor error:', err);
-        });
-      }, 5000);
-      const available = await checkPortAvailable(PORT);
-      if (!available) {
-        console.error(`Port ${PORT} is already in use.`);
-        process.exit(1);
-      }
-      server.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
+    await ensureSeedAdmin();
+
+    setInterval(() => {
+      processPendingSyncEvents().catch((err) => {
+        console.error('Sync processor error:', err);
       });
+    }, 5000);
+
+    const available = await checkPortAvailable(PORT);
+    if (!available) {
+      console.error(`Port ${PORT} is already in use.`);
+      process.exit(1);
+    }
+
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
     });
   }).catch(err => {
     console.error('Database connection failed:', err);
