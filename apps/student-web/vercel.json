@@ -1,8 +1,4 @@
 {
   "buildCommand": "npm run build:web",
-  "outputDirectory": "web-build",
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/.*", "dest": "/index.html" }
-  ]
+  "outputDirectory": "web-build"
 }
