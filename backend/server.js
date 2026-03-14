@@ -21,8 +21,8 @@ const { processPendingSyncEvents } = require('./src/services/syncService');
 const app = express();
 const server = http.createServer(app); // Create HTTP server
 const PORT = process.env.PORT || 5000;
-const adminIndexPath = path.join(__dirname, '..', 'admin-app', 'web-build', 'index.html');
-const userIndexPath = path.join(__dirname, '..', 'user-app', 'web-build', 'index.html');
+const adminIndexPath = path.join(__dirname, '..', 'apps', 'admin-app', 'web-build', 'index.html');
+const userIndexPath = path.join(__dirname, '..', 'apps', 'student-web', 'web-build', 'index.html');
 
 // Initialize Socket.io
 const io = new Server(server, {
@@ -102,7 +102,7 @@ app.use('/api/push', pushRoutes);
 
 // Serve Student Web App (static build) under root
 try {
-  const studentWebBuild = path.join(__dirname, '..', 'user-app', 'web-build');
+  const studentWebBuild = path.join(__dirname, '..', 'apps', 'student-web', 'web-build');
   app.use('/user', express.static(studentWebBuild));
   app.use(express.static(studentWebBuild));
   console.log('Student web static mounted at /');
