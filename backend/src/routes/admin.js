@@ -3015,7 +3015,13 @@ router.post('/payments', async (req, res) => {
     }
     
     // Notification logic omitted for brevity but should be here
-    await Notification.create({ user_id, title: 'Payment Update', message: `Payment ${payment.status}`, channel: 'app' });
+    await Notification.create({ 
+      user_id, 
+      title: 'Payment Update', 
+      message: `Payment ${payment.status}`, 
+      channel: 'app',
+      event_type: 'payment_update' // Added missing event_type
+    });
     if (actor && isStaffRole(actor.role)) {
       await notifyUserInApp(actor.user_id, 'Payment created', `You recorded payment ${payment.payment_id}.`, 'payment_update');
       const text = buildStaffEmail('Payment created', `Payment ${payment.payment_id} recorded.`, baseMeta);
@@ -3130,7 +3136,8 @@ router.patch('/payments/:id/status', async (req, res) => {
                user_id: payment.user_id,
                title: 'Subscription Activated',
                message: 'Your payment has been confirmed and your subscription is now ACTIVE!',
-               channel: 'app'
+               channel: 'app',
+               event_type: 'payment_update'
            });
        }
     }
@@ -3171,7 +3178,8 @@ router.patch('/payments/:id/status', async (req, res) => {
          user_id: payment.user_id,
          title: 'Emergency Laundry Payment Confirmed',
          message: 'Your emergency laundry payment has been confirmed.',
-         channel: 'app'
+         channel: 'app',
+         event_type: 'payment_update'
        });
     }
 
@@ -3188,7 +3196,8 @@ router.patch('/payments/:id/status', async (req, res) => {
                user_id: payment.user_id,
                title: 'Payment Rejected',
                message: 'Your bank transfer was rejected. Please contact support or try again.',
-               channel: 'app'
+               channel: 'app',
+               event_type: 'payment_update'
            });
        }
     }
@@ -3290,7 +3299,8 @@ router.put('/payments/:id', async (req, res) => {
                user_id: payment.user_id,
                title: 'Subscription Activated',
                message: 'Your payment has been confirmed and your subscription is now ACTIVE!',
-               channel: 'app'
+               channel: 'app',
+               event_type: 'payment_update'
            });
        }
     }
@@ -3331,7 +3341,8 @@ router.put('/payments/:id', async (req, res) => {
          user_id: payment.user_id,
          title: 'Emergency Laundry Payment Confirmed',
          message: 'Your emergency laundry payment has been confirmed.',
-         channel: 'app'
+         channel: 'app',
+         event_type: 'payment_update'
        });
     }
 
@@ -3348,7 +3359,8 @@ router.put('/payments/:id', async (req, res) => {
                user_id: payment.user_id,
                title: 'Payment Rejected',
                message: 'Your bank transfer was rejected. Please contact support or try again.',
-               channel: 'app'
+               channel: 'app',
+               event_type: 'payment_update'
            });
        }
     }

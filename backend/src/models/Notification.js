@@ -30,7 +30,7 @@ const Notification = sequelize.define('Notification', {
     defaultValue: 'personal'
   },
   event_type: {
-    type: DataTypes.ENUM('order_update', 'payment', 'subscription', 'system', 'promo'),
+    type: DataTypes.ENUM('order_update', 'payment', 'subscription', 'system', 'promo', 'payment_update'),
     defaultValue: 'system'
   },
   channel: {

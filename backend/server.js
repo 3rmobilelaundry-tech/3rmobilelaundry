@@ -461,6 +461,15 @@ if (require.main === module) {
           await sequelize.query(`ALTER TYPE "enum_Users_role" ADD VALUE 'head_admin';`);
           console.log('Added head_admin to role enum (PostgreSQL)');
         }
+        
+        // Ensure payment_update is in the Notifications event_type enum
+        const [notifyResults] = await sequelize.query(`SELECT enum_range(NULL::"enum_Notifications_event_type") as values;`);
+        const notifyValues = notifyResults[0].values ? notifyResults[0].values.replace(/[{}]/g, '').split(',') : [];
+        if (!notifyValues.includes('payment_update')) {
+          await sequelize.query(`ALTER TYPE "enum_Notifications_event_type" ADD VALUE 'payment_update';`);
+          console.log('Added payment_update to notification enum (PostgreSQL)');
+        }
+
       } else {
         // SQLite or other dialects - skip complex ENUM alteration
         console.log('Skipping ENUM migration for non-Postgres dialect:', sequelize.getDialect());
