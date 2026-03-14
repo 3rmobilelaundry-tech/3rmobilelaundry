@@ -13,6 +13,7 @@ const adminRoutes = require('./src/routes/admin');
 const carouselRoutes = require('./src/routes/carousel');
 const webhooksRoutes = require('./src/routes/webhooks');
 const pushRoutes = require('./src/routes/push');
+const deviceRoutes = require('./src/routes/device');
 const { User, Plan } = require('./src/models');
 const bcrypt = require('bcryptjs');
 const chatSocket = require('./src/services/chatSocket'); // Import chat service
@@ -112,6 +113,7 @@ app.use('/api', adminRoutes); // Mount admin routes at /api to support /api/staf
 app.use('/carousel', carouselRoutes);
 app.use('/webhooks', webhooksRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/device', deviceRoutes);
 
 // Serve Student Web App (static build) under root
 try {

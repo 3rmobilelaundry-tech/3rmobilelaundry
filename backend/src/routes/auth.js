@@ -11,6 +11,7 @@ const { queueLoginEmail, queueEmailNotification } = require('../services/syncSer
 const IntegrationService = require('../services/integrationService');
 const { sendEmail } = require('../services/emailService');
 const { createSyncEvent } = require('../services/syncService');
+const pushNotificationService = require('../services/pushNotificationService');
 
 const normalizeNigerianPhone = (value) => {
   const raw = String(value || '').trim();
@@ -457,6 +458,14 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ user_id: user.user_id, role: user.role, token_version: user.token_version || 0 }, process.env.JWT_SECRET || 'secret', { expiresIn: '24h' });
 
     console.info('Login success', { user_id: user.user_id, role: user.role, ip: req.ip });
+    
+    pushNotificationService.sendPushNotification(
+      user.user_id,
+      'New Login Detected',
+      'Your account was just accessed successfully.',
+      { type: 'login' }
+    ).catch(err => console.error('Push error:', err));
+
     res.json({ message: 'Login successful', token, user });
   } catch (error) {
     console.error('Login error:', error?.message || error);

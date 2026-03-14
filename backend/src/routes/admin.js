@@ -9,6 +9,7 @@ const path = require('path');
 const IntegrationService = require('../services/integrationService');
 const sse = require('../services/sse');
 const { createSyncEvent, queueOrderStatusEmail, queuePaymentEmail, queueEmailNotification } = require('../services/syncService');
+const pushNotificationService = require('../services/pushNotificationService');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -1440,10 +1441,11 @@ router.put('/orders/:id/status', async (req, res) => {
     sse.broadcast('order_updated', order);
     
     // Send Push Notification
-    IntegrationService.sendPushNotification(
+    pushNotificationService.sendPushNotification(
         order.user_id,
-        'Order Status Update',
-        `Your order #${order.order_id} is now ${status}.`
+        'Laundry Status Update',
+        'Your laundry order status has been updated.',
+        { type: 'order_update', orderId: order.order_id }
     ).catch(e => console.warn('Push failed:', e.message));
 
     emitPickupSync(req, 'updated', order, { status: order.status });
@@ -1542,10 +1544,11 @@ router.post('/orders/:id/accept', async (req, res) => {
         sse.broadcast('order_updated', order);
 
         // Push Notification
-        IntegrationService.sendPushNotification(
+        pushNotificationService.sendPushNotification(
              order.user_id,
-             'Order Accepted',
-             'Your order has been accepted and is being processed.'
+             'Laundry Status Update',
+             'Your laundry order status has been updated.',
+             { type: 'order_update', orderId: order.order_id }
         ).catch(e => console.warn('Push failed:', e.message));
 
         emitPickupSync(req, 'status_update', order, { to: 'accepted', assigned_rider_id: rider_id || null });
@@ -3146,6 +3149,16 @@ router.patch('/payments/:id/status', async (req, res) => {
       actorUserId: req.user.user_id
     });
     
+    if (status === 'paid' && previousStatus !== 'paid') {
+        // Payment Approved Push Notification
+        pushNotificationService.sendPushNotification(
+            payment.user_id,
+            'Payment Confirmed',
+            'Your laundry payment has been successfully approved.',
+            { type: 'payment_approved', paymentId: payment.payment_id }
+        ).catch(err => console.error('Push error:', err));
+    }
+
     if (status === 'paid' && payment.payment_type === 'subscription') {
        let sub;
        if (payment.metadata && payment.metadata.subscription_id) {
@@ -3154,7 +3167,7 @@ router.patch('/payments/:id/status', async (req, res) => {
            sub = await Subscription.findOne({ where: { user_id: payment.user_id }, order: [['created_at', 'DESC']] });
        }
        
-       if (sub) {
+       if (sub && sub.status !== 'active') {
            await sub.update({ status: 'active' });
            
            await Notification.create({
@@ -3164,6 +3177,14 @@ router.patch('/payments/:id/status', async (req, res) => {
                channel: 'app',
                event_type: 'payment_update'
            });
+
+           // Subscription Activated Push Notification
+           pushNotificationService.sendPushNotification(
+               payment.user_id,
+               'Subscription Activated',
+               'Your laundry subscription plan is now active.',
+               { type: 'subscription_activated', subscriptionId: sub.subscription_id }
+           ).catch(err => console.error('Push error:', err));
        }
     }
 

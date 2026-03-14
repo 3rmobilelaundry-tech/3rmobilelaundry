@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Order, Subscription, Payment, User } = require('../models');
 const IntegrationService = require('../services/integrationService');
+const pushNotificationService = require('../services/pushNotificationService');
 
 // Webhook handling
 // In a real scenario, you'd verify the signature from headers (e.g. x-paystack-signature)
@@ -34,14 +35,24 @@ router.post('/paystack', async (req, res) => {
                             if (user.phone_number) {
                                 await IntegrationService.sendWhatsApp(user.phone_number, `Your subscription is now active!`);
                             }
-                            await IntegrationService.sendPushNotification(user.user_id, 'Subscription Active', 'Your subscription is now active!');
+                            await pushNotificationService.sendPushNotification(
+                                user.user_id, 
+                                'Subscription Activated', 
+                                'Your laundry subscription plan is now active.',
+                                { type: 'subscription_activated', subscriptionId: sub.subscription_id }
+                            );
                         }
                     }
                 } else if (metadata.type === 'order' && metadata.order_id) {
                     const order = await Order.findByPk(metadata.order_id);
                     if (order) {
                         console.log(`Payment received for order ${order.order_id}`);
-                        await IntegrationService.sendPushNotification(order.user_id, 'Payment Received', `Payment received for order #${order.order_id}`);
+                        await pushNotificationService.sendPushNotification(
+                            order.user_id, 
+                            'Payment Confirmed', 
+                            'Your laundry payment has been successfully approved.',
+                            { type: 'payment_approved', orderId: order.order_id }
+                        );
                     }
                 }
             }

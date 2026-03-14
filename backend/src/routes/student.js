@@ -7,6 +7,7 @@ const path = require('path');
 const IntegrationService = require('../services/integrationService');
 const sse = require('../services/sse');
 const { createSyncEvent, queuePaymentEmail, queueOrderStatusEmail, queueEmailNotification } = require('../services/syncService');
+const pushNotificationService = require('../services/pushNotificationService');
 const multer = require('multer');
 const jwt = require('jsonwebtoken');
 const { verifyToken } = require('../middleware/auth');
@@ -1395,6 +1396,14 @@ router.post('/book', async (req, res) => {
     
     await t.commit();
     console.log('Student order committed', { order_id: order.order_id, user_id });
+
+    // NEW PUSH NOTIFICATION TRIGGER
+    pushNotificationService.sendPushNotification(
+      user_id,
+      'Laundry Pickup Scheduled',
+      'Your laundry pickup request has been successfully created.',
+      { type: 'order_created', orderId: order.order_id }
+    ).catch(err => console.error('Push error:', err));
 
     // Create User Notification
     const userNotification = await Notification.create({

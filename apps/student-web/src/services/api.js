@@ -130,7 +130,7 @@ export const student = {
   initiateEmergencyPayment: (payload) => api.post('/student/payments/emergency/initiate', payload),
   confirmEmergencyPayment: (payload) => api.post('/student/payments/emergency/confirm', payload),
   getCarousel: () => api.get('/carousel/active'),
-  registerPushToken: (user_id, token) => api.post('/api/push/register-device', { userId: user_id, deviceToken: token }),
+  registerPushToken: (user_id, token) => api.post('/api/device/register', { userId: user_id, fcmToken: token, deviceType: 'android' }),
 };
 
 export const logFrontError = (payload) => api.post('/student/front-logs', payload);

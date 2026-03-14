@@ -17,10 +17,15 @@ const InventoryItem = require('./InventoryItem');
 const RegistrationField = require('./RegistrationField');
 const School = require('./School');
 const DeviceToken = require('./DeviceToken');
+const UserDeviceToken = require('./UserDeviceToken');
 
 // Associations
 User.hasMany(DeviceToken, { foreignKey: 'user_id' });
 DeviceToken.belongsTo(User, { foreignKey: 'user_id' });
+
+User.hasMany(UserDeviceToken, { foreignKey: 'user_id' });
+UserDeviceToken.belongsTo(User, { foreignKey: 'user_id' });
+
 
 User.hasMany(Notification, { foreignKey: 'user_id' });
 Notification.belongsTo(User, { foreignKey: 'user_id' });
@@ -83,5 +88,6 @@ module.exports = {
   InventoryItem,
   RegistrationField,
   School,
-  DeviceToken
+  DeviceToken,
+  UserDeviceToken
 };
