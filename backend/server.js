@@ -21,8 +21,17 @@ const { processPendingSyncEvents } = require('./src/services/syncService');
 const app = express();
 const server = http.createServer(app); // Create HTTP server
 const PORT = process.env.PORT || 5000;
-const adminIndexPath = path.join(__dirname, '..', 'apps', 'admin-app', 'web-build', 'index.html');
-const userIndexPath = path.join(__dirname, '..', 'apps', 'student-web', 'web-build', 'index.html');
+
+// Path for Admin Web Build (Static)
+const adminIndexPath = path.join(__dirname, 'public', 'admin', 'index.html');
+
+// Path for Student Web Build (Static)
+// Priority: 1. public/user (Production/Vercel) 2. ../apps/student-web/web-build (Local Dev)
+const localStudentBuild = path.join(__dirname, '..', 'apps', 'student-web', 'web-build');
+const prodStudentBuild = path.join(__dirname, 'public', 'user');
+const userIndexPath = fs.existsSync(path.join(prodStudentBuild, 'index.html')) 
+  ? path.join(prodStudentBuild, 'index.html') 
+  : path.join(localStudentBuild, 'index.html');
 
 // Initialize Socket.io
 const io = new Server(server, {
@@ -85,8 +94,13 @@ app.use((req, res, next) => {
 // Serve Head Admin Web App (static build) under port 5000
 try {
   const adminWebBuild = path.join(__dirname, 'public', 'admin');
-  app.use('/admin', express.static(adminWebBuild));
-  console.log('Admin web static mounted at /admin');
+try {
+  if (fs.existsSync(adminWebBuild)) {
+    app.use('/admin', express.static(adminWebBuild));
+    console.log('Admin web static mounted at /admin');
+  } else {
+    console.warn(`Admin web build missing at ${adminWebBuild}`);
+  }
 } catch (e) {
   console.warn('Failed to mount admin web static:', e.message);
 }
@@ -102,10 +116,21 @@ app.use('/api/push', pushRoutes);
 
 // Serve Student Web App (static build) under root
 try {
-  const studentWebBuild = path.join(__dirname, '..', 'apps', 'student-web', 'web-build');
-  app.use('/user', express.static(studentWebBuild));
-  app.use(express.static(studentWebBuild));
-  console.log('Student web static mounted at /');
+  let studentWebBuild = localStudentBuild;
+  if (fs.existsSync(prodStudentBuild)) {
+      studentWebBuild = prodStudentBuild;
+      console.log('Using Production Student Web Build from:', studentWebBuild);
+  } else {
+      console.log('Using Local Dev Student Web Build from:', studentWebBuild);
+  }
+  
+  if (fs.existsSync(studentWebBuild)) {
+    app.use('/user', express.static(studentWebBuild));
+    app.use(express.static(studentWebBuild));
+    console.log('Student web static mounted at /');
+  } else {
+    console.warn(`Student web build missing at ${studentWebBuild}`);
+  }
 } catch (e) {
   console.warn('Failed to mount student web static:', e.message);
 }
@@ -113,14 +138,16 @@ try {
 // SPA Fallback Handling: Serve index.html for unknown routes
 // 1. Admin App Catch-All
 app.get('/admin-web/*', (req, res) => {
-  if (fs.existsSync(adminIndexPath)) {
-    res.set('Cache-Control', 'no-store');
-    res.sendFile(adminIndexPath);
-  } else {
-    console.error(`Admin App build not found at: ${adminIndexPath}`);
-    res.status(404).send('Admin App build not found');
-  }
-});
+  const adminIndexPath = path.join(__dirname, 'public', 'admin', 'index.html');
+  app.get('/admin-web/*', (req, res) => {
+    if (fs.existsSync(adminIndexPath)) {
+      res.set('Cache-Control', 'no-store');
+      res.sendFile(adminIndexPath);
+    } else {
+      console.error(`Admin App build not found at: ${adminIndexPath}`);
+      res.status(404).send('Admin App build not found');
+    }
+  });
 
 app.get('/user/*', (req, res) => {
   if (fs.existsSync(userIndexPath)) {
