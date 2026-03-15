@@ -39,19 +39,21 @@ const sendPushNotification = async (userId, title, message, data = {}) => {
     const registrationTokens = tokens.map(t => t.fcm_token);
 
     const payload = {
-      notification: {
-        title: title,
-        body: message
-      },
-      android: {
-        priority: "high"
-      },
-      data: {
-        ...data,
-        click_action: "FLUTTER_NOTIFICATION_CLICK"
-      },
-      tokens: registrationTokens
-    };
+  notification: {
+    title: title,
+    body: message
+  },
+  android: {
+    priority: "high",
+    notification: {
+      channelId: "default"
+    }
+  },
+  data: {
+    ...data
+  },
+  tokens: registrationTokens
+};
 
     const response = await admin.messaging().sendMulticast(payload);
     
