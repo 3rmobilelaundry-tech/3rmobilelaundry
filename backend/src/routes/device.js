@@ -5,36 +5,63 @@ const { UserDeviceToken } = require('../models');
 // POST /api/device/register
 router.post('/register', async (req, res) => {
   try {
-    const { userId, fcmToken, deviceType } = req.body;
+
+    // Accept both fcmToken and fcmtoken (to avoid frontend mistakes)
+    const userId = req.body.userId;
+    const fcmToken = req.body.fcmToken || req.body.fcmtoken;
+    const deviceType = req.body.deviceType || 'android';
 
     if (!userId || !fcmToken) {
-      return res.status(400).json({ error: 'userId and fcmToken are required' });
+      console.log("Invalid device registration payload:", req.body);
+      return res.status(400).json({
+        error: 'userId and fcmToken are required'
+      });
     }
 
-    // Upsert token
-    const [tokenRecord, created] = await UserDeviceToken.findOrCreate({
-      where: { fcm_token: fcmToken },
-      defaults: {
-        user_id: userId,
-        device_type: deviceType || 'android',
-        created_at: new Date()
-      }
+    // Check if token already exists
+    let tokenRecord = await UserDeviceToken.findOne({
+      where: { fcm_token: fcmToken }
     });
 
-    if (!created) {
-      // If token exists but user is different, update user_id (device changed hands)
+    if (!tokenRecord) {
+
+      // Create new token
+      tokenRecord = await UserDeviceToken.create({
+        user_id: userId,
+        fcm_token: fcmToken,
+        device_type: deviceType,
+        created_at: new Date()
+      });
+
+      console.log(`New FCM token stored for user ${userId}`);
+
+    } else {
+
+      // Update existing token owner if necessary
       if (Number(tokenRecord.user_id) !== Number(userId)) {
+        console.log(`FCM token reassigned from user ${tokenRecord.user_id} to ${userId}`);
         tokenRecord.user_id = userId;
       }
-      tokenRecord.device_type = deviceType || 'android';
+
+      tokenRecord.device_type = deviceType;
       await tokenRecord.save();
+
+      console.log(`Existing FCM token updated for user ${userId}`);
     }
 
-    console.log(`FCM Device token registered for user ${userId}`);
-    res.json({ success: true, message: 'Device token registered' });
+    return res.json({
+      success: true,
+      message: 'Device token registered'
+    });
+
   } catch (error) {
+
     console.error('Device registration error:', error);
-    res.status(500).json({ error: error.message });
+
+    return res.status(500).json({
+      error: 'Failed to register device token'
+    });
+
   }
 });
 
