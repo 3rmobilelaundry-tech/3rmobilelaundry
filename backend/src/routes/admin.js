@@ -1508,8 +1508,11 @@ router.put('/orders/:id/status', async (req, res) => {
           if (status === 'delivery' || status === 'out_for_delivery') notificationMessage = "Your laundry is out for delivery.";
           if (status === 'completed' || status === 'delivered') notificationMessage = "Your laundry order is completed.";
 
+          const device = await UserDeviceToken.findOne({
+          where: { user_id: order.user_id }
+          });
           await sendNotification(
-              null, // Use default constant FCM_TOKEN
+              (device && device.fcm_token) ? device.fcm_token : null, // Use default constant FCM_TOKEN
               '3R Mobile Laundry', 
               notificationMessage,
               { type: 'order_update', orderId: String(order.order_id) }
