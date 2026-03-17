@@ -109,7 +109,10 @@ try {
 app.use('/auth', authRoutes);
 app.use('/student', studentRoutes);
 app.use('/admin', adminRoutes);
-app.use('/api/admin', adminRoutes); // Mount admin routes at /api to support /api/staff
+app.use('/api/device', deviceRoutes); // MUST COME FIRST
+app.use('/api/push', pushRoutes);     // MUST COME FIRST
+app.use('/api/admin', adminRoutes);   // NEW
+app.use('/api', adminRoutes);         // KEEP for frontend compatibility
 app.use('/carousel', carouselRoutes);
 app.use('/webhooks', webhooksRoutes);
 app.use('/api/push', pushRoutes);
