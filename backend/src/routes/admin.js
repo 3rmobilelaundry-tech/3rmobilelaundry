@@ -1458,15 +1458,6 @@ router.put('/orders/:id/status', async (req, res) => {
 
     // Send Notification using the new utility (User Requirement)
     try {
-      // Requirement 5: Prevent duplicate notifications.
-      // We check if the status actually changed. `oldStatus` vs `status`.
-      // The logic above already sets `oldStatus = order.status` before updating.
-      // If `oldStatus === status`, we should arguably skip notification, BUT the user might want a re-notification?
-      // Usually "Prevent duplicate notifications" means don't send 2 notifications for 1 event.
-      // Since we had `pushNotificationService` AND `sendNotification` running in parallel in previous code, that was a duplicate.
-      // By commenting out the first one, we solve the main duplication.
-      // Additionally, we can check if status changed.
-      
       if (oldStatus !== status) {
         const statusMessages = {
           accepted: 'Your laundry order has been accepted.',
