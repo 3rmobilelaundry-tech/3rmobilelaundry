@@ -1,19 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const { UserDeviceToken } = require('../models');
+const { verifyToken } = require('../middleware/auth'); // ✅ ADD THIS
 
 // POST /api/device/register
-router.post('/register', async (req, res) => {
+router.post('/register', verifyToken, async (req, res) => { // ✅ ADD verifyToken
   try {
-    if (!req.user) {
-  return res.status(401).json({ error: 'Unauthorized' });
-}
     const { fcmToken, deviceType } = req.body;
-const userId = req.user.user_id;
+    const userId = req.user.user_id;
 
-    if (!req.user || !fcmToken) {
+    if (!fcmToken) {
       return res.status(400).json({
-        error: 'userId and fcmToken are required'
+        error: 'fcmToken is required'
       });
     }
 
