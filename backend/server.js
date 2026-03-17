@@ -109,7 +109,7 @@ try {
 app.use('/auth', authRoutes);
 app.use('/student', studentRoutes);
 app.use('/admin', adminRoutes);
-app.use('/api', adminRoutes); // Mount admin routes at /api to support /api/staff
+app.use('/api/admin', adminRoutes); // Mount admin routes at /api to support /api/staff
 app.use('/carousel', carouselRoutes);
 app.use('/webhooks', webhooksRoutes);
 app.use('/api/push', pushRoutes);
