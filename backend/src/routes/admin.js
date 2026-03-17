@@ -1456,7 +1456,6 @@ router.put('/orders/:id/status', async (req, res) => {
     ).catch(e => console.warn('Push failed:', e.message));
     */
 
-    // Send Notification using the new utility (User Requirement)
     try {
       if (oldStatus !== status) {
         const statusMessages = {
