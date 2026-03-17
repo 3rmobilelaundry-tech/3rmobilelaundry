@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { User, Notification, Invite, Payment, AuditLog, Plan, Subscription, Order, Code, AnalyticsSnapshot, CarouselItem, ChatThread, ChatMessage, SyncEvent, InventoryItem, RegistrationField, School, sequelize } = require('../models');
+const { User, Notification, Invite, Payment, AuditLog, Plan, Subscription, Order, Code, AnalyticsSnapshot, CarouselItem, ChatThread, ChatMessage, SyncEvent, InventoryItem, RegistrationField, School, UserDeviceToken, sequelize } = require('../models');
 const { verifyToken, verifyRole } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const fs = require('fs');
@@ -1508,12 +1508,20 @@ router.put('/orders/:id/status', async (req, res) => {
           if (status === 'delivery' || status === 'out_for_delivery') notificationMessage = "Your laundry is out for delivery.";
           if (status === 'completed' || status === 'delivered') notificationMessage = "Your laundry order is completed.";
 
-          await sendNotification(
-              null, // Use default constant FCM_TOKEN
-              '3R Mobile Laundry', 
-              notificationMessage,
-              { type: 'order_update', orderId: String(order.order_id) }
-          );
+          const devices = await UserDeviceToken.findAll({ 
+            where: { user_id: order.user_id } 
+          });
+
+          console.log("Devices found:", devices.length);
+
+          for (const device of devices) {
+            await sendNotification(
+                device.fcm_token,
+                '3R Mobile Laundry', 
+                notificationMessage,
+                { type: 'order_update', orderId: String(order.order_id) }
+            );
+          }
       }
     } catch (err) {
       console.warn('Firebase notification failed:', err.message);
@@ -1624,12 +1632,20 @@ router.post('/orders/:id/accept', async (req, res) => {
 
         // Send Notification using the new utility
         try {
-            await sendNotification(
-                null,
-                '3R Mobile Laundry', 
-                'Your laundry order has been accepted.',
-                { type: 'order_update', orderId: String(order.order_id) }
-            );
+            const devices = await UserDeviceToken.findAll({ 
+              where: { user_id: order.user_id } 
+            });
+
+            console.log("Devices found:", devices.length);
+
+            for (const device of devices) {
+              await sendNotification(
+                  device.fcm_token,
+                  '3R Mobile Laundry', 
+                  'Your laundry order has been accepted.',
+                  { type: 'order_update', orderId: String(order.order_id) }
+              );
+            }
         } catch (err) {
             console.warn('Firebase notification failed:', err.message);
         }

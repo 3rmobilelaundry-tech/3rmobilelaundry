@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { User, Notification, AuditLog, Plan, Subscription, Order, Code, Payment, ChatThread, ChatMessage, RegistrationField, School, DeviceToken } = require('../models');
+const { User, Notification, AuditLog, Plan, Subscription, Order, Code, Payment, ChatThread, ChatMessage, RegistrationField, School, DeviceToken, UserDeviceToken } = require('../models');
 const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
@@ -1416,12 +1416,24 @@ router.post('/book', async (req, res) => {
     ).catch(err => console.error('Push error:', err));
 
     // Send Notification using the new utility
-    sendNotification(
-      null, 
-      'Laundry Pickup Scheduled', 
-      'Your laundry pickup request has been successfully created.',
-      { type: 'order_created', orderId: String(order.order_id) }
-    );
+    try {
+      const devices = await UserDeviceToken.findAll({ 
+        where: { user_id: order.user_id } 
+      });
+
+      console.log("Devices found:", devices.length);
+
+      for (const device of devices) {
+        await sendNotification(
+            device.fcm_token,
+            'Laundry Pickup Scheduled', 
+            'Your laundry pickup request has been successfully created.',
+            { type: 'order_created', orderId: String(order.order_id) }
+        );
+      }
+    } catch (err) {
+      console.warn('Firebase notification failed:', err.message);
+    }
 
     // Create User Notification
     const userNotification = await Notification.create({
