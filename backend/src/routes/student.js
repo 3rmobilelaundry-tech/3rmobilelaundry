@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { User, Notification, AuditLog, Plan, Subscription, Order, Code, Payment, ChatThread, ChatMessage, RegistrationField, School, DeviceToken, UserDeviceToken } = require('../models');
+const { User, Notification, AuditLog, Plan, Subscription, Order, Code, Payment, ChatThread, ChatMessage, RegistrationField, School, UserDeviceToken } = require('../models');
 const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
