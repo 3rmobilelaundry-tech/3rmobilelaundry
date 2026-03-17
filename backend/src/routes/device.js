@@ -5,9 +5,13 @@ const { UserDeviceToken } = require('../models');
 // POST /api/device/register
 router.post('/register', async (req, res) => {
   try {
-    const { userId, fcmToken, deviceType } = req.body;
+    if (!req.user) {
+  return res.status(401).json({ error: 'Unauthorized' });
+}
+    const { fcmToken, deviceType } = req.body;
+const userId = req.user.user_id;
 
-    if (!userId || !fcmToken) {
+    if (!req.user || !fcmToken) {
       return res.status(400).json({
         error: 'userId and fcmToken are required'
       });
