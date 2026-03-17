@@ -15,7 +15,19 @@ try {
       isInitialized = true;
       console.log('Firebase Admin initialized successfully in PushNotificationService');
     } else {
-      console.warn('FIREBASE_SERVICE_ACCOUNT environment variable not found. Push notifications will be disabled.');
+      // Try to load from config file if env var missing
+      try {
+        const serviceAccount = require('../../config/firebase-service-account.json');
+        if (serviceAccount.project_id) {
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount)
+            });
+            isInitialized = true;
+            console.log('Firebase Admin initialized from config file');
+        }
+      } catch (e) {
+         console.warn('FIREBASE_SERVICE_ACCOUNT environment variable not found and config file missing/invalid. Push notifications will be disabled.');
+      }
     }
   } else {
     isInitialized = true;
