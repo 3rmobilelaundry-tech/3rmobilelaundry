@@ -1407,21 +1407,12 @@ router.post('/book', async (req, res) => {
     await t.commit();
     console.log('Student order committed', { order_id: order.order_id, user_id });
 
-    // NEW PUSH NOTIFICATION TRIGGER
-    pushNotificationService.sendPushNotification(
-      user_id,
-      'Laundry Pickup Scheduled',
-      'Your laundry pickup request has been successfully created.',
-      { type: 'order_created', orderId: order.order_id }
-    ).catch(err => console.error('Push error:', err));
-
-    // Send Notification using the new utility
     try {
       const devices = await UserDeviceToken.findAll({ 
         where: { user_id: order.user_id } 
       });
 
-      console.log("Devices found:", devices.length);
+      console.log('Devices found:', devices.length);
 
       for (const device of devices) {
         await sendNotification(

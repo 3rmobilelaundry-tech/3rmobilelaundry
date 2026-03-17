@@ -32,18 +32,20 @@ router.post('/register', verifyToken, async (req, res) => {
     });
 
     if (!created) {
-      // If token exists but user is different, update user_id (device changed hands)
-      if (Number(tokenRecord.user_id) !== Number(userId)) {
-        tokenRecord.user_id = userId;
-      }
+      tokenRecord.user_id = userId;
       tokenRecord.device_type = deviceType || 'android';
       await tokenRecord.save();
     }
 
-    console.log(`FCM Device token registered for user ${userId}`);
-    res.json({ success: true, message: 'Device token registered' });
+    console.log(`FCM token saved for user ${userId}`);
+
+    res.json({
+      success: true,
+      message: "Device token registered"
+    });
+
   } catch (error) {
-    console.error('Device registration error:', error);
+    console.error("Device register error:", error);
     res.status(500).json({ error: error.message });
   }
 });

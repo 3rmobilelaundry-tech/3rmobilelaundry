@@ -1468,60 +1468,34 @@ router.put('/orders/:id/status', async (req, res) => {
       // Additionally, we can check if status changed.
       
       if (oldStatus !== status) {
-          let notificationMessage = `Your laundry order status has been updated to ${status}.`;
-          
-          switch (status) {
-            case 'accepted':
-              notificationMessage = "Your laundry order has been accepted.";
-              break;
-            case 'picked_up': // Database: picked_up -> User: picked
-              notificationMessage = "Your laundry has been picked up.";
-              break;
-            case 'processing': // Database: processing -> User: washing
-              notificationMessage = "Your laundry is currently being washed.";
-              break;
-            case 'ready': // Database: ready -> User: ready
-              notificationMessage = "Your laundry is ready."; // User request: "Your laundry is ready for delivery." but let's stick to their example list or my previous impl? 
-              // Wait, the new prompt has specific texts:
-              // ready -> "Your laundry is ready for delivery."
-              // washing -> "Your laundry is being washed." (slightly different from previous "currently being washed")
-              // picked -> "Your laundry has been picked up." (matches)
-              // accepted -> "Your laundry order has been accepted." (matches)
-              // delivery -> "Your laundry is out for delivery." (matches)
-              // completed -> "Your laundry order is completed." (matches)
-              break;
-            case 'out_for_delivery': // Database: out_for_delivery? -> User: delivery
-            case 'delivery': // Handling both just in case
-              notificationMessage = "Your laundry is out for delivery.";
-              break;
-            case 'delivered': // Database: delivered -> User: completed
-            case 'completed': 
-              notificationMessage = "Your laundry order is completed.";
-              break;
-          }
-          
-          // Re-map messages exactly as per latest user prompt
-          if (status === 'accepted') notificationMessage = "Your laundry order has been accepted.";
-          if (status === 'picked_up') notificationMessage = "Your laundry has been picked up.";
-          if (status === 'processing') notificationMessage = "Your laundry is being washed.";
-          if (status === 'ready') notificationMessage = "Your laundry is ready for delivery.";
-          if (status === 'delivery' || status === 'out_for_delivery') notificationMessage = "Your laundry is out for delivery.";
-          if (status === 'completed' || status === 'delivered') notificationMessage = "Your laundry order is completed.";
+        const statusMessages = {
+          accepted: 'Your laundry order has been accepted.',
+          picked_up: 'Your laundry has been picked up.',
+          processing: 'Your laundry is being washed.',
+          ready: 'Your laundry is ready for delivery.',
+          out_for_delivery: 'Your laundry is out for delivery.',
+          delivery: 'Your laundry is out for delivery.',
+          delivered: 'Your laundry order is completed.',
+          completed: 'Your laundry order is completed.'
+        };
 
-          const devices = await UserDeviceToken.findAll({ 
-            where: { user_id: order.user_id } 
-          });
+        const notificationMessage =
+          statusMessages[status] || `Your laundry order status has been updated to ${status}.`;
 
-          console.log("Devices found:", devices.length);
+        const devices = await UserDeviceToken.findAll({
+          where: { user_id: order.user_id }
+        });
 
-          for (const device of devices) {
-            await sendNotification(
-                device.fcm_token,
-                '3R Mobile Laundry', 
-                notificationMessage,
-                { type: 'order_update', orderId: String(order.order_id) }
-            );
-          }
+        console.log('Devices found:', devices.length);
+
+        for (const device of devices) {
+          await sendNotification(
+            device.fcm_token,
+            '3R Mobile Laundry',
+            notificationMessage,
+            { type: 'order_update', orderId: String(order.order_id) }
+          );
+        }
       }
     } catch (err) {
       console.warn('Firebase notification failed:', err.message);
@@ -1622,21 +1596,12 @@ router.post('/orders/:id/accept', async (req, res) => {
         await t.commit();
         sse.broadcast('order_updated', order);
 
-        // Push Notification
-        pushNotificationService.sendPushNotification(
-             order.user_id,
-             'Laundry Status Update',
-             'Your laundry order status has been updated.',
-             { type: 'order_update', orderId: order.order_id }
-        ).catch(e => console.warn('Push failed:', e.message));
-
-        // Send Notification using the new utility
         try {
             const devices = await UserDeviceToken.findAll({ 
               where: { user_id: order.user_id } 
             });
 
-            console.log("Devices found:", devices.length);
+            console.log('Devices found:', devices.length);
 
             for (const device of devices) {
               await sendNotification(
