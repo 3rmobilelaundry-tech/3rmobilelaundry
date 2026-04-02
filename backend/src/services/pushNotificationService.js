@@ -1,46 +1,8 @@
-const admin = require('firebase-admin');
+const admin = require('../../config/firebase');
 const { UserDeviceToken } = require('../models');
 
-let isInitialized = false;
-
-try {
-  if (!admin.apps.length) {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
-
-      isInitialized = true;
-      console.log('Firebase Admin initialized successfully in PushNotificationService');
-    } else {
-      // Try to load from config file if env var missing
-      try {
-        const serviceAccount = require('../../config/firebase-service-account.json');
-        if (serviceAccount.project_id) {
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount)
-            });
-            isInitialized = true;
-            console.log('Firebase Admin initialized from config file');
-        }
-      } catch (e) {
-         console.warn('FIREBASE_SERVICE_ACCOUNT environment variable not found and config file missing/invalid. Push notifications will be disabled.');
-      }
-    }
-  } else {
-    isInitialized = true;
-  }
-} catch (error) {
-  console.error('Failed to initialize Firebase Admin in PushNotificationService:', error);
-}
-
-/**
- * Send push notification to a user
- */
 const sendPushNotification = async (userId, title, message, data = {}) => {
-  if (!isInitialized) return;
+  if (!admin.apps.length) return;
 
   try {
 

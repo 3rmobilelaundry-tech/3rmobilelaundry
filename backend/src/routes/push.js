@@ -1,47 +1,35 @@
 const express = require('express');
 const router = express.Router();
-const { User, DeviceToken } = require('../models');
+const { UserDeviceToken } = require('../models');
 const { verifyToken } = require('../middleware/auth');
 
-// Register Device Token
 router.post('/register-device', verifyToken, async (req, res) => {
   try {
-    const { userId, deviceToken } = req.body;
-    
-    // Allow user_id from body if matches authenticated user (or if admin)
-    // But primarily use req.user.user_id
-    const effectiveUserId = userId || req.user.user_id;
-
-    if (Number(effectiveUserId) !== Number(req.user.user_id) && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
+    const { deviceToken, platform } = req.body;
+    const userId = req.user.user_id;
 
     if (!deviceToken) {
       return res.status(400).json({ error: 'Device token is required' });
     }
 
-    // Upsert token
-    const [tokenRecord, created] = await DeviceToken.findOrCreate({
-      where: { token: deviceToken },
+    const [tokenRecord, created] = await UserDeviceToken.findOrCreate({
+      where: { fcm_token: deviceToken },
       defaults: {
-        user_id: effectiveUserId,
-        platform: req.body.platform || 'web',
-        last_active: new Date()
+        user_id: userId,
+        device_type: platform || 'web',
+        created_at: new Date()
       }
     });
 
     if (!created) {
-      // If token exists but user is different, update user_id (device changed hands?)
-      // Or just update last_active
-      if (Number(tokenRecord.user_id) !== Number(effectiveUserId)) {
-          tokenRecord.user_id = effectiveUserId;
+      if (Number(tokenRecord.user_id) !== Number(userId)) {
+          tokenRecord.user_id = userId;
       }
-      tokenRecord.last_active = new Date();
-      if (req.body.platform) tokenRecord.platform = req.body.platform;
+      if (platform) tokenRecord.device_type = platform;
       await tokenRecord.save();
     }
 
-    console.log(`Device token registered for user ${effectiveUserId}`);
+    console.log(`Device token registered for user ${userId}`);
     res.json({ success: true, message: 'Device token registered' });
   } catch (error) {
     console.error('Device registration error:', error);

@@ -1946,31 +1946,30 @@ router.post('/payments/initialize', async (req, res) => {
   }
 });
 
-router.post('/push-token', async (req, res) => {
+router.post('/push-token', verifyToken, async (req, res) => {
   try {
-    const { user_id, token } = req.body;
-    if (!user_id || !token) return res.status(400).json({ error: 'User ID and token required' });
-    
-    // Store in DeviceToken table
-    const [record, created] = await DeviceToken.findOrCreate({
-      where: { token },
+    const user_id = req.user.user_id;
+    const token = req.body.fcmToken || req.body.token;
+    const deviceType = req.body.deviceType || req.body.platform || 'web';
+
+    if (!token) return res.status(400).json({ error: 'Token required' });
+
+    const [record, created] = await UserDeviceToken.findOrCreate({
+      where: { fcm_token: token },
       defaults: {
         user_id,
-        platform: 'web',
-        last_active: new Date()
+        device_type: deviceType,
+        created_at: new Date()
       }
     });
 
     if (!created && Number(record.user_id) !== Number(user_id)) {
-        await record.update({ user_id, last_active: new Date() });
+        await record.update({ user_id, device_type: deviceType });
     } else if (!created) {
-        await record.update({ last_active: new Date() });
+        await record.update({ device_type: deviceType });
     }
-    
-    // Legacy support: update profile_fields for backward compatibility if needed
-    // But we are moving away from it.
-    
-    console.log('Push token registered (DeviceToken)', { user_id, token: token.substring(0, 20) + '...' });
+
+    console.log('Push token registered', { user_id, token: token.substring(0, 20) + '...' });
     
     res.json({ success: true });
   } catch (error) {
