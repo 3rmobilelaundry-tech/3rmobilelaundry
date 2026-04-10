@@ -14,6 +14,7 @@ const carouselRoutes = require('./src/routes/carousel');
 const webhooksRoutes = require('./src/routes/webhooks');
 const pushRoutes = require('./src/routes/push');
 const deviceRoutes = require('./src/routes/device');
+const userRoutes = require('./src/routes/user');
 const { User, Plan } = require('./src/models');
 const bcrypt = require('bcryptjs');
 const chatSocket = require('./src/services/chatSocket'); // Import chat service
@@ -111,6 +112,7 @@ app.use('/student', studentRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api/device', deviceRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', adminRoutes);
 app.use('/carousel', carouselRoutes);
